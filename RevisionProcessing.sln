@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenXmlRevisions", "OpenXmlRevisions\OpenXmlRevisions.csproj", "{9C6D2F01-527E-4A48-A122-30FF74C357AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenXmlRevisions", "OpenXmlRevisions\OpenXmlRevisions.csproj", "{9C6D2F01-527E-4A48-A122-30FF74C357AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenXmlRevisions.Tests", "OpenXmlRevisions.Tests\OpenXmlRevisions.Tests.csproj", "{241424F7-4E77-4AAA-828A-C3EB56E2DD16}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{9C6D2F01-527E-4A48-A122-30FF74C357AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9C6D2F01-527E-4A48-A122-30FF74C357AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9C6D2F01-527E-4A48-A122-30FF74C357AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{241424F7-4E77-4AAA-828A-C3EB56E2DD16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{241424F7-4E77-4AAA-828A-C3EB56E2DD16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{241424F7-4E77-4AAA-828A-C3EB56E2DD16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{241424F7-4E77-4AAA-828A-C3EB56E2DD16}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
