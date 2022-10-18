@@ -35,6 +35,20 @@ namespace OxPt
             afterAccepting.SaveAs(processedDestDocx.FullName);
         }
 
+
+        [Theory]
+        [InlineData("RevisionAccept-099.docx")]
+
+        public void RA099(string name)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../AdditionalTestFiles/");
+            FileInfo sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+
+            WmlDocument notAccepted = new WmlDocument(sourceDocx.FullName);
+            WmlDocument afterAccepting = RevisionAccepter.AcceptRevisions(notAccepted);
+            var processedDestDocx = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceDocx.Name.Replace(".docx", "-processed-by-RevisionAccepter.docx")));
+            afterAccepting.SaveAs(processedDestDocx.FullName);
+        }
     }
 }
 
