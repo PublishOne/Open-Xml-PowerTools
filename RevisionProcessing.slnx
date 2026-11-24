@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="OpenXmlRevisions.Tests/OpenXmlRevisions.Tests.csproj" />
+  <Project Path="OpenXmlRevisions/OpenXmlRevisions.csproj" />
+</Solution>

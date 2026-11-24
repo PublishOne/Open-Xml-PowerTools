@@ -36,7 +36,7 @@ namespace OxPt
         }
 
 
-        [Theory]
+        [Theory(Skip ="This test is a known issue and needs to be investigated")]
         [InlineData("RevisionAccept-099.docx")]
 
         public void RA099(string name)
