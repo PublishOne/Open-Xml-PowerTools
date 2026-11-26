@@ -2086,12 +2086,11 @@ public class RevisionProcessor
             // content control, because the following triggers off of runs.
             // To see an example of this, see example document "NumberingParagraphPropertiesChange.docxs"
 
-            // find list of runs to surround
-            var runIds = contentControl.Attribute(PT.RunIds).Value.Split(',');
-            var runs = contentControl.Descendants(W.r).Where(r => runIds.Contains(r.Attribute(PT.UniqueId).Value));
-            // find the runs in the new document
-
-            var runsInNewDocument = runs.Select(r => newDocument.Descendants(W.r).First(z => z.Attribute(PT.UniqueId).Value == r.Attribute(PT.UniqueId).Value)).ToList();
+            // Fully deleted paragraphs may have removed some of the original runs.
+            var runIds = new HashSet<string>(contentControl.Attribute(PT.RunIds).Value.Split(','));
+            var runsInNewDocument = newDocument.Descendants(W.r)
+                .Where(r => runIds.Contains(r.Attribute(PT.UniqueId).Value))
+                .ToList();
 
             // find common ancestor
             List<XElement> runAncestorIntersection = null;
@@ -2150,9 +2149,9 @@ public class RevisionProcessor
                     contentControl.Elements().Where(e => e.Name != W.sdtContent),
                     new XElement(W.sdtContent, commonAncestor));
 
-                XElement newContentControlOrdered = new XElement(contentControl.Name,
-                    contentControl.Attributes(),
-                    contentControl.Elements().OrderBy(e =>
+                XElement newContentControlOrdered = new XElement(newContentControl.Name,
+                    newContentControl.Attributes(),
+                    newContentControl.Elements().OrderBy(e =>
                     {
                         if (Order_sdt.ContainsKey(e.Name))
                         {
