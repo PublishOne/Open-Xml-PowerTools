@@ -3016,17 +3016,6 @@ public class RevisionProcessor
             .Any(e => TrackedRevisionsElements.Contains(e.Name));
     }
 
-    public static bool HasTrackedRevisions(WmlDocument document)
-    {
-        using (OpenXmlMemoryStreamDocument streamDoc = new OpenXmlMemoryStreamDocument(document))
-        {
-            using (WordprocessingDocument wdoc = streamDoc.GetWordprocessingDocument())
-            {
-                return RevisionAccepter.HasTrackedRevisions(wdoc);
-            }
-        }
-    }
-
     public static bool HasTrackedRevisions(WordprocessingDocument doc)
     {
         if (PartHasTrackedRevisions(doc.MainDocumentPart))
