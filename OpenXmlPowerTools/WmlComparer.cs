@@ -364,6 +364,16 @@ namespace OpenXmlPowerTools
                         RemoveHyperlinks = true,
                     };
                     MarkupSimplifier.SimplifyMarkup(wDoc, msSettings);
+                }
+                source = new WmlDocument(source.FileName, ms.ToArray());
+            }
+
+            // Reopen without markup compatibility processing; otherwise the SDK may overwrite the parts written via PutXDocument when disposing.
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ms.Write(source.DocumentByteArray, 0, source.DocumentByteArray.Length);
+                using (WordprocessingDocument wDoc = WordprocessingDocument.Open(ms, true))
+                {
                     ChangeFootnoteEndnoteReferencesToUniqueRange(wDoc, startingIdForFootnotesEndnotes);
                     AddUnidsToMarkupInContentParts(wDoc);
                     AddFootnotesEndnotesParts(wDoc);

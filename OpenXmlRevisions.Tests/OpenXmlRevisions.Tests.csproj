@@ -9,6 +9,9 @@
   <ItemGroup>
     <Compile Include="..\OpenXmlPowerTools.Tests\RevisionAccepterTests.cs" Link="RevisionAccepterTests.cs" />
     <Compile Include="..\OpenXmlPowerTools.Tests\RevisionProcessorTests.cs" Link="RevisionProcessorTests.cs" />
+    <Compile Include="..\OpenXmlPowerTools.Tests\WmlComparerTests.cs" Link="WmlComparerTests.cs" />
+    <Compile Include="..\OpenXmlPowerTools.Tests\WmlComparerTests2.cs" Link="WmlComparerTests2.cs" />
+    <Compile Include="..\OpenXmlPowerTools\ColorParser.cs" Link="ColorParser.cs" />
     <Compile Include="..\OpenXmlPowerTools\TestUtil.cs" Link="TestUtil.cs" />
     <Compile Include="..\OpenXmlPowerTools\WmlComparer.cs" Link="WmlComparer.cs" />
   </ItemGroup>

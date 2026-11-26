@@ -933,7 +933,7 @@ namespace OxPt
             var rootTempDir = TestUtil.TempDir;
             var thisTestTempDir = new DirectoryInfo(Path.Combine(rootTempDir.FullName, testId));
             if (thisTestTempDir.Exists)
-                Assert.True(false, "Duplicate test id???");
+                Assert.Fail("Duplicate test id???");
             else
                 thisTestTempDir.Create();
 
