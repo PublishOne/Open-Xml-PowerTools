@@ -14,6 +14,7 @@
 		<Compile Include="..\OpenXmlPowerTools\GetListItemText_zh_CN.cs" Link="GetListItemText_zh_CN.cs" />
 		<Compile Include="..\OpenXmlPowerTools\ListItemRetriever.cs" Link="ListItemRetriever.cs" />
 		<Compile Include="..\OpenXmlPowerTools\MetricsGetter.cs" Link="MetricsGetter.cs" />
+		<Compile Include="..\OpenXmlPowerTools\PackageExtensions.cs" Link="PackageExtensions.cs" />
 		<Compile Include="..\OpenXmlPowerTools\PtOpenXmlDocument.cs" Link="PtOpenXmlDocument.cs" />
 		<Compile Include="..\OpenXmlPowerTools\PtOpenXmlUtil.cs" Link="PtOpenXmlUtil.cs" />
 		<Compile Include="..\OpenXmlPowerTools\PtUtil.cs" Link="PtUtil.cs" />
@@ -23,7 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DocumentFormat.OpenXml" Version="2.8.1" />
+		<PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
 		<PackageReference Include="System.Drawing.Common" Version="11.0.0" />
 	</ItemGroup>
 
