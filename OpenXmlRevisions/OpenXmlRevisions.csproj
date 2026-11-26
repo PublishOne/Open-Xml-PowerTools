@@ -18,7 +18,6 @@
 		<Compile Include="..\OpenXmlPowerTools\PtOpenXmlDocument.cs" Link="PtOpenXmlDocument.cs" />
 		<Compile Include="..\OpenXmlPowerTools\PtOpenXmlUtil.cs" Link="PtOpenXmlUtil.cs" />
 		<Compile Include="..\OpenXmlPowerTools\PtUtil.cs" Link="PtUtil.cs" />
-		<Compile Include="..\OpenXmlPowerTools\RevisionProcessor.cs" Link="RevisionProcessor.cs" />
 		<Compile Include="..\OpenXmlPowerTools\XlsxTables.cs" Link="XlsxTables.cs" />
 	</ItemGroup>
 
