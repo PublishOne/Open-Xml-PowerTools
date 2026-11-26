@@ -1,22 +1,25 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System;
-using System.IO;
-using System.IO.Packaging;
-using System.IO.Compression;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Xml;
-using System.Linq;
-using System.Xml.Linq;
-using System.Collections.Generic;
 using DocumentFormat.OpenXml.Packaging;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.IO.Packaging;
+using System.Linq;
+using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 
 // ReSharper disable InconsistentNaming
 
 namespace OpenXmlPowerTools
 {
+    public class PowerToolsInvalidDataException : Exception
+    {
+        public PowerToolsInvalidDataException(string message) : base(message) { }
+    }
     public static class PtOpenXmlExtensions
     {
         public static XDocument GetXDocument(this OpenXmlPart part)
@@ -1358,171 +1361,6 @@ listSeparator
                     element.Nodes().Select(n => WmlOrderElementsPerStandard(n)));
             }
             return node;
-        }
-
-        public static WmlDocument BreakLinkToTemplate(WmlDocument source)
-        {
-            using (MemoryStream ms = new MemoryStream())
-            {
-                ms.Write(source.DocumentByteArray, 0, source.DocumentByteArray.Length);
-                using (WordprocessingDocument wDoc = WordprocessingDocument.Open(ms, true))
-                {
-                    var efpp = wDoc.ExtendedFilePropertiesPart;
-                    if (efpp != null)
-                    {
-                        var xd = efpp.GetXDocument();
-                        var template = xd.Descendants(EP.Template).FirstOrDefault();
-                        if (template != null)
-                            template.Value = "";
-                        efpp.PutXDocument();
-                    }
-                }
-                var result = new WmlDocument(source.FileName, ms.ToArray());
-                return result;
-            }
-        }
-    }
-
-    public static class PresentationMLUtil
-    {
-        public static void FixUpPresentationDocument(PresentationDocument pDoc)
-        {
-            foreach (var part in pDoc.GetAllParts())
-            {
-                if (part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.slide+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.presentationml.handoutMaster+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.theme+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.drawingml.chart+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml" ||
-                    part.ContentType == "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml" ||
-                    part.ContentType == "application/vnd.ms-office.drawingml.diagramDrawing+xml")
-                {
-                    XDocument xd = part.GetXDocument();
-                    xd.Descendants().Attributes("smtClean").Remove();
-                    xd.Descendants().Attributes("smtId").Remove();
-                    part.PutXDocument();
-                }
-                if (part.ContentType == "application/vnd.openxmlformats-officedocument.vmlDrawing")
-                {
-                    string fixedContent = null;
-
-                    using (var stream = part.GetStream(FileMode.Open, FileAccess.ReadWrite))
-                    {
-                        using (var sr = new StreamReader(stream))
-                        {
-                            //string input = @"    <![if gte mso 9]><v:imagedata o:relid=""rId15""";
-                            var input = sr.ReadToEnd();
-                            string pattern = @"<!\[(?<test>.*)\]>";
-                            //string replacement = "<![CDATA[${test}]]>";
-                            //fixedContent = Regex.Replace(input, pattern, replacement, RegexOptions.Multiline);
-                            fixedContent = Regex.Replace(input, pattern, m =>
-                            {
-                                var g = m.Groups[1].Value;
-                                if (g.StartsWith("CDATA["))
-                                    return "<![" + g + "]>";
-                                else
-                                    return "<![CDATA[" + g + "]]>";
-                            },
-                            RegexOptions.Multiline);
-
-                            //var input = @"xxxxx o:relid=""rId1"" o:relid=""rId1"" xxxxx";
-                            pattern = @"o:relid=[""'](?<id1>.*)[""'] o:relid=[""'](?<id2>.*)[""']";
-                            fixedContent = Regex.Replace(fixedContent, pattern, m =>
-                            {
-                                var g = m.Groups[1].Value;
-                                return @"o:relid=""" + g + @"""";
-                            },
-                            RegexOptions.Multiline);
-
-                            fixedContent = fixedContent.Replace("</xml>ml>", "</xml>");
-
-                            stream.SetLength(fixedContent.Length);
-                        }
-                    }
-                    using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(fixedContent)))
-                        part.FeedData(ms);
-                }
-            }
-        }
-    }
-
-    public static class SpreadsheetMLUtil
-    {
-        public static string GetCellType(string value)
-        {
-            if (value.Any(c => !Char.IsDigit(c) && c != '.'))
-                return "str";
-            return null;
-        }
-
-        public static string IntToColumnId(int i)
-        {
-            if (i >= 0 && i <= 25)
-                return ((char)(((int)'A') + i)).ToString();
-            if (i >= 26 && i <= 701)
-            {
-                int v = i - 26;
-                int h = v / 26;
-                int l = v % 26;
-                return ((char)(((int)'A') + h)).ToString() + ((char)(((int)'A') + l)).ToString();
-            }
-            // 17576
-            if (i >= 702 && i <= 18277)
-            {
-                int v = i - 702;
-                int h = v / 676;
-                int r = v % 676;
-                int m = r / 26;
-                int l = r % 26;
-                return ((char)(((int)'A') + h)).ToString() +
-                    ((char)(((int)'A') + m)).ToString() +
-                    ((char)(((int)'A') + l)).ToString();
-            }
-            throw new ColumnReferenceOutOfRange(i.ToString());
-        }
-
-        private static int CharToInt(char c)
-        {
-            return (int)c - (int)'A';
-        }
-
-        public static int ColumnIdToInt(string cid)
-        {
-            if (cid.Length == 1)
-                return CharToInt(cid[0]);
-            if (cid.Length == 2)
-            {
-                return CharToInt(cid[0]) * 26 + CharToInt(cid[1]) + 26;
-            }
-            if (cid.Length == 3)
-            {
-
-                return CharToInt(cid[0]) * 676 + CharToInt(cid[1]) * 26 + CharToInt(cid[2]) + 702;
-            }
-            throw new ColumnReferenceOutOfRange(cid);
-        }
-
-        public static IEnumerable<string> ColumnIDs()
-        {
-            for (var c = (int)'A'; c <= (int)'Z'; ++c)
-                yield return ((char)c).ToString();
-            for (var c1 = (int)'A'; c1 <= (int)'Z'; ++c1)
-                for (var c2 = (int)'A'; c2 <= (int)'Z'; ++c2)
-                    yield return ((char)c1).ToString() + ((char)c2).ToString();
-            for (var d1 = (int)'A'; d1 <= (int)'Z'; ++d1)
-                for (var d2 = (int)'A'; d2 <= (int)'Z'; ++d2)
-                    for (var d3 = (int)'A'; d3 <= (int)'Z'; ++d3)
-                        yield return ((char)d1).ToString() + ((char)d2).ToString() + ((char)d3).ToString();
-        }
-
-        public static string ColumnIdOf(string cellReference)
-        {
-            string columnIdOf = cellReference.Split('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').First();
-            return columnIdOf;
         }
     }
 

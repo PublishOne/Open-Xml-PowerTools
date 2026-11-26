@@ -140,7 +140,7 @@ namespace OxPt
             if (!originalCopiedToDestDocx.Exists)
             {
                 var wml1 = new WmlDocument(originalDocx.FullName);
-                var wml2 = WordprocessingMLUtil.BreakLinkToTemplate(wml1);
+                var wml2 = OpenXmlPowerToolsDocument.BreakLinkToTemplate(wml1);
                 wml2.SaveAs(originalCopiedToDestDocx.FullName);
             }
 
@@ -152,7 +152,7 @@ namespace OxPt
                     FileInfo revisedDocx = new FileInfo(Path.Combine(sourceDir.FullName, z.Element("DocName").Value));
                     var revisedCopiedToDestDocx = new FileInfo(Path.Combine(thisTestTempDir.FullName, revisedDocx.Name));
                     var wml1 = new WmlDocument(revisedDocx.FullName);
-                    var wml2 = WordprocessingMLUtil.BreakLinkToTemplate(wml1);
+                    var wml2 = OpenXmlPowerToolsDocument.BreakLinkToTemplate(wml1);
                     wml2.SaveAs(revisedCopiedToDestDocx.FullName);
                     return new WmlRevisedDocumentInfo()
                     {
@@ -173,7 +173,7 @@ namespace OxPt
                 source1Wml,
                 revisedDocumentsArray,
                 settings);
-            var wml3 = WordprocessingMLUtil.BreakLinkToTemplate(consolidatedWml);
+            var wml3 = OpenXmlPowerToolsDocument.BreakLinkToTemplate(consolidatedWml);
             wml3.SaveAs(consolidatedDocumentFi.FullName);
 
             var validationErrors = "";
@@ -361,13 +361,13 @@ namespace OxPt
             if (!source1CopiedToDestDocx.Exists)
             {
                 var wml1 = new WmlDocument(source1Docx.FullName);
-                var wml2 = WordprocessingMLUtil.BreakLinkToTemplate(wml1);
+                var wml2 = OpenXmlPowerToolsDocument.BreakLinkToTemplate(wml1);
                 wml2.SaveAs(source1CopiedToDestDocx.FullName);
             }
             if (!source2CopiedToDestDocx.Exists)
             {
                 var wml1 = new WmlDocument(source2Docx.FullName);
-                var wml2 = WordprocessingMLUtil.BreakLinkToTemplate(wml1);
+                var wml2 = OpenXmlPowerToolsDocument.BreakLinkToTemplate(wml1);
                 wml2.SaveAs(source2CopiedToDestDocx.FullName);
             }
 
@@ -402,7 +402,7 @@ namespace OxPt
             WmlDocument source2Wml = new WmlDocument(source2CopiedToDestDocx.FullName);
             WmlComparerSettings settings = new WmlComparerSettings();
             WmlDocument comparedWml = WmlComparer.Compare(source1Wml, source2Wml, settings);
-            WordprocessingMLUtil.BreakLinkToTemplate(comparedWml).SaveAs(docxWithRevisionsFi.FullName);
+            OpenXmlPowerToolsDocument.BreakLinkToTemplate(comparedWml).SaveAs(docxWithRevisionsFi.FullName);
 
             List<WmlRevisedDocumentInfo> revisedDocInfo = new List<WmlRevisedDocumentInfo>()
             {
@@ -417,7 +417,7 @@ namespace OxPt
                 source1Wml,
                 revisedDocInfo,
                 settings);
-            WordprocessingMLUtil.BreakLinkToTemplate(consolidatedWml).SaveAs(docxConsolidatedFi.FullName);
+            OpenXmlPowerToolsDocument.BreakLinkToTemplate(consolidatedWml).SaveAs(docxConsolidatedFi.FullName);
 
             string validationErrors = "";
             using (MemoryStream ms = new MemoryStream())
