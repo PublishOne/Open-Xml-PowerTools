@@ -1338,6 +1338,11 @@ public class RevisionProcessor
             AcceptRevisionsForPart(doc.MainDocumentPart.FootnotesPart);
         }
 
+        if (doc.MainDocumentPart.GlossaryDocumentPart != null)
+        {
+            AcceptRevisionsForPart(doc.MainDocumentPart.GlossaryDocumentPart);
+        }
+
         if (doc.MainDocumentPart.StyleDefinitionsPart != null)
         {
             AcceptRevisionsForStylesDefinitionPart(doc.MainDocumentPart.StyleDefinitionsPart);
