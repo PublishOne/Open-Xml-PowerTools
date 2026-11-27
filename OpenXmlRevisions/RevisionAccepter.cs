@@ -3,9 +3,9 @@
 
 using DocumentFormat.OpenXml.Packaging;
 
-namespace OpenXmlPowerTools;
+namespace OpenXmlRevisions;
 
-public class RevisionAccepter
+public static class RevisionAccepter
 {
     public static void AcceptRevisions(WordprocessingDocument doc)
     {

@@ -20,8 +20,11 @@ namespace OpenXmlPowerTools
             get
             {
                 if (s_DeleteTempFiles != null)
+                {
                     return (bool)s_DeleteTempFiles;
-                FileInfo donotdelete = new FileInfo("donotdelete.txt");
+                }
+
+                var donotdelete = new FileInfo("donotdelete.txt");
                 s_DeleteTempFiles = !donotdelete.Exists;
                 return (bool)s_DeleteTempFiles;
             }
@@ -33,7 +36,9 @@ namespace OpenXmlPowerTools
             get
             {
                 if (s_TempDir != null)
+                {
                     return s_TempDir;
+                }
                 else
                 {
                     var now = DateTime.Now;
@@ -52,9 +57,15 @@ namespace OpenXmlPowerTools
             File.WriteAllText(fi.FullName, str);
             var notepadExe = new FileInfo(@"C:\Program Files (x86)\Notepad++\notepad++.exe");
             if (!notepadExe.Exists)
+            {
                 notepadExe = new FileInfo(@"C:\Program Files\Notepad++\notepad++.exe");
+            }
+
             if (!notepadExe.Exists)
+            {
                 notepadExe = new FileInfo(@"C:\Windows\System32\notepad.exe");
+            }
+
             ExecutableRunner.RunExecutable(notepadExe.FullName, fi.FullName, TempDir.FullName);
         }
 

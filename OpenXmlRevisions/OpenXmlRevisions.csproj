@@ -2,6 +2,14 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<PackageId>PublishOne.$(AssemblyName)</PackageId>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Authors>Eric White</Authors>
+		<Copyright>Copyright (c) Microsoft Corporation 2012-2017 Portions Copyright (c) Eric White Inc 2018-2019</Copyright>
+		<RepositoryUrl>https://github.com/PublishOne/Open-Xml-PowerTools</RepositoryUrl>
+		<Version>5.0.0-beta.1</Version>
 	</PropertyGroup>
 
 	<ItemGroup>

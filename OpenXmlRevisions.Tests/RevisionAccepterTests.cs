@@ -3,6 +3,7 @@
 
 using DocumentFormat.OpenXml.Packaging;
 using OpenXmlPowerTools;
+using OpenXmlRevisions;
 using OpenXmlRevisions.Tests;
 using System.IO;
 using System.Linq;
@@ -19,17 +20,17 @@ public class RaTests
 
     public void RA001(string name)
     {
-        DirectoryInfo sourceDir = new DirectoryInfo("../../../../TestFiles/");
-        FileInfo sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+        var sourceDir = new DirectoryInfo("../../../../TestFiles/");
+        var sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
         var processedDestDocx = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceDocx.Name.Replace(".docx", "-processed-by-RevisionAccepter.docx")));
 
-        using (WordprocessingDocument notAccepted = WordprocessingDocument.Open(sourceDocx.FullName, false))
+        using (var notAccepted = WordprocessingDocument.Open(sourceDocx.FullName, false))
         {
             using var fileStream = processedDestDocx.Create();
             using var afterAccepting = notAccepted.Clone(fileStream, true);
             RevisionAccepter.AcceptRevisions(afterAccepting);
         }
-        using (WordprocessingDocument afterAccepting = WordprocessingDocument.Open(processedDestDocx.FullName, false))
+        using (var afterAccepting = WordprocessingDocument.Open(processedDestDocx.FullName, false))
         {
             Assert.False(RevisionAccepter.HasTrackedRevisions(afterAccepting));
             Assert.False(new TrackedChangesIdentifier().DescendantPartsOrSelfHasTrackedRevisions(afterAccepting.MainDocumentPart), "PublishOne still finds revisions");
@@ -82,17 +83,17 @@ public class RaTests
 
     public void RA099(string name)
     {
-        DirectoryInfo sourceDir = new DirectoryInfo("../../../../AdditionalTestFiles/");
-        FileInfo sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+        var sourceDir = new DirectoryInfo("../../../../AdditionalTestFiles/");
+        var sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
         var processedDestDocx = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceDocx.Name.Replace(".docx", "-processed-by-RevisionAccepter.docx")));
 
-        using (WordprocessingDocument notAccepted = WordprocessingDocument.Open(sourceDocx.FullName, false))
+        using (var notAccepted = WordprocessingDocument.Open(sourceDocx.FullName, false))
         {
             using var fileStream = processedDestDocx.Create();
             using var afterAccepting = notAccepted.Clone(fileStream, true);
             RevisionAccepter.AcceptRevisions(afterAccepting);
         }
-        using (WordprocessingDocument afterAccepting = WordprocessingDocument.Open(processedDestDocx.FullName, false))
+        using (var afterAccepting = WordprocessingDocument.Open(processedDestDocx.FullName, false))
         {
             Assert.False(RevisionAccepter.HasTrackedRevisions(afterAccepting));
             Assert.False(new TrackedChangesIdentifier().DescendantPartsOrSelfHasTrackedRevisions(afterAccepting.MainDocumentPart), "PublishOne still finds revisions");

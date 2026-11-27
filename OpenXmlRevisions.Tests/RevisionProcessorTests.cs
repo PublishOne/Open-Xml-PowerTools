@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using OpenXmlPowerTools;
+using OpenXmlRevisions;
 using Xunit;
 
 #if !ELIDE_XUNIT_TESTS
@@ -81,12 +82,12 @@ namespace OxPt
         [InlineData("RP/RP052-Deleted-Para-Mark.docx")]
         public void RP001(string name)
         {
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../TestFiles/");
+            var sourceDir = new DirectoryInfo("../../../../TestFiles/");
             var sourceFi = new FileInfo(Path.Combine(sourceDir.FullName, name));
             var baselineAcceptedFi = new FileInfo(Path.Combine(sourceDir.FullName, name.Replace(".docx", "-Accepted.docx")));
             var baselineRejectedFi = new FileInfo(Path.Combine(sourceDir.FullName, name.Replace(".docx", "-Rejected.docx")));
 
-            WmlDocument sourceWml = new WmlDocument(sourceFi.FullName);
+            var sourceWml = new WmlDocument(sourceFi.FullName);
             WmlDocument afterRejectingWml = RejectRevisions(sourceWml);
             WmlDocument afterAcceptingWml = AcceptRevisions(sourceWml);
 
@@ -107,7 +108,9 @@ namespace OxPt
                         ////////// CODE TO REPEAT UNTIL SUCCESS //////////
                         var sourceDocxCopiedToDestFi = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceFi.Name));
                         if (!sourceDocxCopiedToDestFi.Exists)
+                        {
                             sourceWml.SaveAs(sourceDocxCopiedToDestFi.FullName);
+                        }
                         //////////////////////////////////////////////////
                         break;
                     }
@@ -131,9 +134,13 @@ namespace OxPt
                     batch += "copy " + processedAcceptedFi.FullName + " " + baselineAcceptedFi.FullName + Environment.NewLine;
                     batch += "copy " + processedRejectedFi.FullName + " " + baselineRejectedFi.FullName + Environment.NewLine;
                     if (batchFi.Exists)
+                    {
                         File.AppendAllText(batchFi.FullName, batch);
+                    }
                     else
+                    {
                         File.WriteAllText(batchFi.FullName, batch);
+                    }
                     //////////////////////////////////////////////////
                     break;
                 }
@@ -173,10 +180,10 @@ namespace OxPt
             if (baselineAcceptedFi.Exists)
             {
                 var baselineAcceptedWml = new WmlDocument(baselineAcceptedFi.FullName);
-                WmlComparerSettings wmlComparerSettings = new WmlComparerSettings();
+                var wmlComparerSettings = new WmlComparerSettings();
                 WmlDocument result = WmlComparer.Compare(baselineAcceptedWml, afterAcceptingWml, wmlComparerSettings);
                 var revisions = WmlComparer.GetRevisions(result, wmlComparerSettings);
-                if (revisions.Any())
+                if (revisions.Count != 0)
                 {
                     Assert.Fail("Regression Error: Accepted baseline document did not match processed document");
                 }
@@ -191,10 +198,10 @@ namespace OxPt
             if (baselineRejectedFi.Exists)
             {
                 var baselineRejectedWml = new WmlDocument(baselineRejectedFi.FullName);
-                WmlComparerSettings wmlComparerSettings = new WmlComparerSettings();
+                var wmlComparerSettings = new WmlComparerSettings();
                 WmlDocument result = WmlComparer.Compare(baselineRejectedWml, afterRejectingWml, wmlComparerSettings);
                 var revisions = WmlComparer.GetRevisions(result, wmlComparerSettings);
-                if (revisions.Any())
+                if (revisions.Count != 0)
                 {
                     Assert.Fail("Regression Error: Rejected baseline document did not match processed document");
                 }
@@ -207,7 +214,7 @@ namespace OxPt
 
         public static WmlDocument AcceptRevisions(WmlDocument sourceWml)
         {
-            using (OpenXmlMemoryStreamDocument streamDoc = new OpenXmlMemoryStreamDocument(sourceWml))
+            using (var streamDoc = new OpenXmlMemoryStreamDocument(sourceWml))
             {
                 using (WordprocessingDocument doc = streamDoc.GetWordprocessingDocument())
                 {
@@ -219,7 +226,7 @@ namespace OxPt
 
         public static WmlDocument RejectRevisions(WmlDocument sourceWml)
         {
-            using (OpenXmlMemoryStreamDocument streamDoc = new OpenXmlMemoryStreamDocument(sourceWml))
+            using (var streamDoc = new OpenXmlMemoryStreamDocument(sourceWml))
             {
                 using (WordprocessingDocument doc = streamDoc.GetWordprocessingDocument())
                 {

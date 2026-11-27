@@ -1,24 +1,24 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Xml.Linq;
 
-namespace OpenXmlPowerTools;
+namespace OpenXmlRevisions;
 
-class ReverseRevisionsInfo
+internal sealed class ReverseRevisionsInfo
 {
     public bool InInsert;
 }
 
-public class RevisionProcessor
+public static class RevisionProcessor
 {
     public static void RejectRevisions(WordprocessingDocument doc)
     {
-        RejectRevisionsForPart(doc.MainDocumentPart);
+        ArgumentNullException.ThrowIfNull(doc);
+        RejectRevisionsForPart(doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null"));
         foreach (var part in doc.MainDocumentPart.HeaderParts)
         {
             RejectRevisionsForPart(part);
@@ -76,15 +76,26 @@ public class RevisionProcessor
     private static void RejectRevisionsForPart(OpenXmlPart part)
     {
         var xDoc = part.GetXDocument();
-        var newRoot = RejectRevisionsForPartTransform(xDoc.Root);
+        var newRoot = RejectRevisionsForPartTransform(xDoc.Root ?? throw new InvalidOperationException($"Root element of OpenXmlPart {part.Uri} is null"));
         xDoc.Root.ReplaceWith(newRoot);
         part.PutXDocument();
     }
 
-    private static object RejectRevisionsForPartTransform(XNode node)
+    private static bool TryGetNamedChildElementFrom(XElement element, XName name, XName childElementName, [NotNullWhen(true)] out XElement? child)
     {
-        var element = node as XElement;
-        if (element != null)
+        ArgumentNullException.ThrowIfNull(element);
+        if (element.Name == name)
+        {
+            child = element.Element(childElementName);
+            return child is not null;
+        }
+        child = null;
+        return false;
+    }
+
+    private static object? RejectRevisionsForPartTransform(XNode? node)
+    {
+        if (node is XElement element)
         {
             ////////////////////////////////////////////////////////////////////////////////////////
             // Inserted Numbering Properties
@@ -109,7 +120,7 @@ public class RevisionProcessor
   </w:r>
 </w:p>
 #endif
-            if (element.Name == W.numPr && element.Element(W.ins) != null)
+            if (TryGetNamedChildElementFrom(element, W.numPr, W.ins, out _))
             {
                 return null;
             }
@@ -143,16 +154,11 @@ public class RevisionProcessor
   </w:r>
 </w:p>
 #endif
-            if (element.Name == W.pPr &&
-                element.Element(W.pPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.pPr, W.pPrChange, out var child))
             {
-                var pPr = element.Element(W.pPrChange).Element(W.pPr);
-                if (pPr == null)
-                {
-                    pPr = new XElement(W.pPr);
-                }
+                var pPr = child.Element(W.pPr);
 
-                var new_pPr = new XElement(pPr); // clone it
+                var new_pPr = pPr is not null ? new XElement(pPr) : new XElement(W.pPr); // clone it
                 new_pPr.Add(RejectRevisionsForPartTransform(element.Element(W.rPr)));
                 return RejectRevisionsForPartTransform(new_pPr);
             }
@@ -181,10 +187,9 @@ public class RevisionProcessor
       <w:bookmarkStart w:id="1" w:name="_GoBack"/>
     </w:p>
 #endif
-            if (element.Name == W.rPr &&
-                element.Element(W.rPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.rPr, W.rPrChange, out var rPrChange))
             {
-                var new_rPr = element.Element(W.rPrChange).Element(W.rPr);
+                var new_rPr = rPrChange.Element(W.rPr);
                 return RejectRevisionsForPartTransform(new_rPr);
             }
 
@@ -235,10 +240,9 @@ public class RevisionProcessor
   </w:pPr>
 </w:p>
 #endif
-            if (element.Name == W.sectPr &&
-                element.Element(W.sectPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.sectPr, W.sectPrChange, out var sectPrChange))
             {
-                var newSectPr = element.Element(W.sectPrChange).Element(W.sectPr);
+                var newSectPr = sectPrChange.Element(W.sectPr);
                 return RejectRevisionsForPartTransform(newSectPr);
             }
 
@@ -258,10 +262,9 @@ public class RevisionProcessor
     </w:tblGridChange>
   </w:tblGrid>
 #endif
-            if (element.Name == W.tblGrid &&
-                element.Element(W.tblGridChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.tblGrid, W.tblGridChange, out var tblGridChange))
             {
-                var newTblGrid = element.Element(W.tblGridChange).Element(W.tblGrid);
+                var newTblGrid = tblGridChange.Element(W.tblGrid);
                 return RejectRevisionsForPartTransform(newTblGrid);
             }
 
@@ -284,19 +287,17 @@ public class RevisionProcessor
       </w:p>
     </w:tc>
 #endif
-            if (element.Name == W.tcPr &&
-                element.Element(W.tcPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.tcPr, W.tcPrChange, out var tcPrChange))
             {
-                var newTcPr = element.Element(W.tcPrChange).Element(W.tcPr);
+                var newTcPr = tcPrChange.Element(W.tcPr);
                 return RejectRevisionsForPartTransform(newTcPr);
             }
 
             ////////////////////////////////////////////////////////////////////////////////////
             // trPrChange
-            if (element.Name == W.trPr &&
-                element.Element(W.trPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.trPr, W.trPrChange, out var trPrChange))
             {
-                var newTrPr = element.Element(W.trPrChange).Element(W.trPr);
+                var newTrPr = trPrChange.Element(W.trPr);
                 return RejectRevisionsForPartTransform(newTrPr);
             }
 
@@ -340,10 +341,9 @@ public class RevisionProcessor
       </w:tblPrExChange>
     </w:tblPrEx>
 #endif
-            if (element.Name == W.tblPrEx &&
-                element.Element(W.tblPrExChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.tblPrEx, W.tblPrExChange, out var tblPrExChange))
             {
-                var newTblPrEx = element.Element(W.tblPrExChange).Element(W.tblPrEx);
+                var newTblPrEx = tblPrExChange.Element(W.tblPrEx);
                 return RejectRevisionsForPartTransform(newTblPrEx);
             }
 
@@ -364,10 +364,9 @@ public class RevisionProcessor
     </w:tblPrChange>
   </w:tblPr>
 #endif
-            if (element.Name == W.tblPr &&
-                element.Element(W.tblPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.tblPr, W.tblPrChange, out var tblPrChange))
             {
-                var newTrPr = element.Element(W.tblPrChange).Element(W.tblPr);
+                var newTrPr = tblPrChange.Element(W.tblPr);
                 return RejectRevisionsForPartTransform(newTrPr);
             }
 
@@ -410,27 +409,24 @@ public class RevisionProcessor
     private static void RejectRevisionsForStylesDefinitionPart(StyleDefinitionsPart stylesDefinitionsPart)
     {
         var xDoc = stylesDefinitionsPart.GetXDocument();
-        var newRoot = RejectRevisionsForStylesTransform(xDoc.Root);
+        var newRoot = RejectRevisionsForStylesTransform(xDoc.Root ?? throw new InvalidOperationException("The root element is missing in StyleDefinitionsPart."));
         xDoc.Root.ReplaceWith(newRoot);
         stylesDefinitionsPart.PutXDocument();
     }
 
-    private static object RejectRevisionsForStylesTransform(XNode node)
+    private static object? RejectRevisionsForStylesTransform(XNode? node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
-            if (element.Name == W.pPr &&
-                element.Element(W.pPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.pPr, W.pPrChange, out var pPrChange))
             {
-                var new_pPr = element.Element(W.pPrChange).Element(W.pPr);
+                var new_pPr = pPrChange.Element(W.pPr);
                 return RejectRevisionsForStylesTransform(new_pPr);
             }
 
-            if (element.Name == W.rPr &&
-                element.Element(W.rPrChange) != null)
+            if (TryGetNamedChildElementFrom(element, W.rPr, W.rPrChange, out var rPrChange))
             {
-                var new_rPr = element.Element(W.rPrChange).Element(W.rPr);
+                var new_rPr = rPrChange.Element(W.rPr);
                 return RejectRevisionsForStylesTransform(new_rPr);
             }
 
@@ -441,11 +437,9 @@ public class RevisionProcessor
         return node;
     }
 
-
-
     private static void ReverseRevisions(WordprocessingDocument doc)
     {
-        ReverseRevisionsForPart(doc.MainDocumentPart);
+        ReverseRevisionsForPart(doc.MainDocumentPart ?? throw new InvalidOperationException("The MainDocumentPart is missing."));
         foreach (var part in doc.MainDocumentPart.HeaderParts)
         {
             ReverseRevisionsForPart(part);
@@ -470,18 +464,19 @@ public class RevisionProcessor
     private static void ReverseRevisionsForPart(OpenXmlPart part)
     {
         var xDoc = part.GetXDocument();
-        ReverseRevisionsInfo rri = new ReverseRevisionsInfo();
-        rri.InInsert = false;
-        var newRoot = (XElement)ReverseRevisionsTransform(xDoc.Root, rri);
-        newRoot = (XElement)RemoveRsidTransform(newRoot);
+        var rri = new ReverseRevisionsInfo
+        {
+            InInsert = false
+        };
+        var newRoot = (XElement)ReverseRevisionsTransform(xDoc.Root ?? throw new InvalidOperationException($"The root element is missing in OpenXmlPart {part.Uri}."), rri);
+        newRoot = (XElement?)RemoveRsidTransform(newRoot) ?? throw new InvalidOperationException($"The root element is missing after removing rsid in OpenXmlPart {part.Uri}.");
         xDoc.Root.ReplaceWith(newRoot);
         part.PutXDocument();
     }
 
-    private static object RemoveRsidTransform(XNode node)
+    private static XNode? RemoveRsidTransform(XNode? node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.rsid)
             {
@@ -504,8 +499,7 @@ public class RevisionProcessor
 
     private static object MergeAdjacentTablesTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Element(W.tbl) != null)
             {
@@ -527,7 +521,7 @@ public class RevisionProcessor
                 var newContent = grouped
                     .Select(g =>
                     {
-                        if (g.Key == "" || g.Count() == 1)
+                        if (string.IsNullOrEmpty(g.Key) || g.Count() == 1)
                         {
                             return (object)g;
                         }
@@ -571,7 +565,7 @@ public class RevisionProcessor
                                 var newRows = fixedWidthsTbl.Elements(W.tr)
                                     .Select(tr =>
                                     {
-                                        XElement newRow = new XElement(W.tr,
+                                        var newRow = new XElement(W.tr,
                                             tr.Attributes(),
                                             tr.Elements().Where(e => e.Name != W.tc),
                                             tr.Elements(W.tc).Select(tc =>
@@ -587,7 +581,7 @@ public class RevisionProcessor
                                                 }
 
                                                 var cellsToLeft = tc
-                                                    .Parent
+                                                    .Parent!
                                                     .Elements(W.tc)
                                                     .TakeWhile(btc => btc != tc);
                                                 int widthToLeft = 0;
@@ -623,16 +617,13 @@ public class RevisionProcessor
                                                         .Count();
                                                     var tcPr = new XElement(W.tcPr,
                                                             tc.Elements(W.tcPr).Elements().Where(e => e.Name != W.gridSpan),
-                                                            gridsRequired != 1 ?
-                                                                new XElement(W.gridSpan,
-                                                                    new XAttribute(W.val, gridsRequired)) :
-                                                                null);
+                                                            gridsRequired != 1 ? new XElement(W.gridSpan, new XAttribute(W.val, gridsRequired)) : null);
                                                     var orderedTcPr = new XElement(W.tcPr,
                                                         tcPr.Elements().OrderBy(e =>
                                                         {
-                                                            if (Order_tcPr.ContainsKey(e.Name))
+                                                            if (Order_tcPr.TryGetValue(e.Name, out var value1))
                                                             {
-                                                                return Order_tcPr[e.Name];
+                                                                return value1;
                                                             }
 
                                                             return 999;
@@ -657,20 +648,18 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => MergeAdjacentTablesTransform(n)));
+                element.Nodes().Select(MergeAdjacentTablesTransform));
         }
         return node;
     }
 
     private static object ReverseRevisionsTransform(XNode node, ReverseRevisionsInfo rri)
     {
-        var element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             var parent = element
                 .Ancestors()
-                .Where(a => a.Name != W.sdtContent && a.Name != W.sdt && a.Name != W.smartTag)
-                .FirstOrDefault();
+                .FirstOrDefault(a => a.Name != W.sdtContent && a.Name != W.sdt && a.Name != W.smartTag);
 
             ////////////////////////////////////////////////////////////////////////////////////
             // Deleted run
@@ -690,7 +679,7 @@ public class RevisionProcessor
 </w:p>
 #endif
             if (element.Name == W.del &&
-                parent.Name == W.p)
+                parent?.Name == W.p)
             {
                 return new XElement(W.ins,
                     element.Nodes().Select(n => ReverseRevisionsTransform(n, rri)));
@@ -716,8 +705,8 @@ public class RevisionProcessor
 </w:p>
 #endif
             if (element.Name == W.del &&
-                parent.Name == W.rPr &&
-                parent.Parent.Name == W.pPr)
+                parent?.Name == W.rPr &&
+                parent?.Parent?.Name == W.pPr)
             {
                 return new XElement(W.ins);
             }
@@ -745,8 +734,8 @@ public class RevisionProcessor
 </w:p>
 #endif
             if (element.Name == W.ins &&
-                parent.Name == W.rPr &&
-                parent.Parent.Name == W.pPr)
+                parent?.Name == W.rPr &&
+                parent?.Parent?.Name == W.pPr)
             {
                 return new XElement(W.del);
             }
@@ -769,7 +758,7 @@ public class RevisionProcessor
 </w:p>
 #endif
             if (element.Name == W.ins &&
-                parent.Name == W.p)
+                parent?.Name == W.p)
             {
                 var newRri = new ReverseRevisionsInfo() { InInsert = true };
                 return new XElement(W.del,
@@ -820,7 +809,7 @@ public class RevisionProcessor
 </w:tbl>
 #endif
             if (element.Name == W.del &&
-                parent.Name == W.trPr)
+                parent?.Name == W.trPr)
             {
                 return new XElement(W.ins);
             }
@@ -869,7 +858,7 @@ public class RevisionProcessor
 </w:tbl>
 #endif
             if (element.Name == W.ins &&
-                parent.Name == W.trPr)
+                parent?.Name == W.trPr)
             {
                 return new XElement(W.del);
             }
@@ -902,7 +891,7 @@ public class RevisionProcessor
       </m:r>
 #endif
             if (element.Name == W.del &&
-                parent.Name == M.r)
+                parent?.Name == M.r)
             {
                 return new XElement(W.ins,
                     element.Nodes().Select(n => ReverseRevisionsTransform(n, rri)));
@@ -936,7 +925,7 @@ public class RevisionProcessor
       </m:r>
 #endif
             if (element.Name == W.ins &&
-                parent.Name == M.r)
+                parent?.Name == M.r)
             {
                 return new XElement(W.del,
                     element.Nodes().Select(n => ReverseRevisionsTransform(n, rri)));
@@ -1317,7 +1306,8 @@ public class RevisionProcessor
 
     public static void AcceptRevisions(WordprocessingDocument doc)
     {
-        AcceptRevisionsForPart(doc.MainDocumentPart);
+        ArgumentNullException.ThrowIfNull(doc);
+        AcceptRevisionsForPart(doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null"));
         foreach (var part in doc.MainDocumentPart.HeaderParts)
         {
             AcceptRevisionsForPart(part);
@@ -1352,15 +1342,14 @@ public class RevisionProcessor
     private static void AcceptRevisionsForStylesDefinitionPart(StyleDefinitionsPart stylesDefinitionsPart)
     {
         var xDoc = stylesDefinitionsPart.GetXDocument();
-        var newRoot = AcceptRevisionsForStylesTransform(xDoc.Root);
+        var newRoot = AcceptRevisionsForStylesTransform(xDoc.Root ?? throw new InvalidOperationException("Root is null for the StyleDefinitionsPart"));
         xDoc.Root.ReplaceWith(newRoot);
         stylesDefinitionsPart.PutXDocument();
     }
 
-    private static object AcceptRevisionsForStylesTransform(XNode node)
+    private static object? AcceptRevisionsForStylesTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.pPrChange || element.Name == W.rPrChange)
             {
@@ -1369,35 +1358,35 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptRevisionsForStylesTransform(n)));
+                element.Nodes().Select(AcceptRevisionsForStylesTransform));
         }
         return node;
     }
 
     public static void AcceptRevisionsForPart(OpenXmlPart part)
     {
-        XElement documentElement = part.GetXDocument().Root;
-        documentElement = (XElement)RemoveRsidTransform(documentElement);
+        XElement documentElement = part.GetXDocument().Root ?? throw new InvalidOperationException("Root is null for the OpenXmlPart " + part.Uri);
+        documentElement = (XElement?)RemoveRsidTransform(documentElement) ?? throw new InvalidOperationException("RemoveRsidTransform returned null for the OpenXmlPart " + part.Uri);
         documentElement = (XElement)FixUpDeletedOrInsertedFieldCodesTransform(documentElement);
         var containsMoveFromMoveTo = documentElement.Descendants(W.moveFrom).Any();
-        documentElement = (XElement)AcceptMoveFromMoveToTransform(documentElement);
-        documentElement = AcceptMoveFromRanges(documentElement);
+        documentElement = (XElement?)AcceptMoveFromMoveToTransform(documentElement) ?? throw new InvalidOperationException("AcceptMoveFromMoveToTransform returned null for the OpenXmlPart " + part.Uri);
+        documentElement = (XElement?)AcceptMoveFromRanges(documentElement) ?? throw new InvalidOperationException("AcceptMoveFromRanges returned null for the OpenXmlPart " + part.Uri);
         // AcceptParagraphEndTagsInMoveFromTransform needs rewritten similar to AcceptDeletedAndMoveFromParagraphMarks
         documentElement = (XElement)AcceptParagraphEndTagsInMoveFromTransform(documentElement);
         documentElement = AcceptDeletedAndMovedFromContentControls(documentElement);
         documentElement = AcceptDeletedAndMoveFromParagraphMarks(documentElement);
         if (containsMoveFromMoveTo)
         {
-            documentElement = (XElement)RemoveRowsLeftEmptyByMoveFrom(documentElement);
+            documentElement = (XElement?)RemoveRowsLeftEmptyByMoveFrom(documentElement) ?? throw new InvalidOperationException("RemoveRowsLeftEmptyByMoveFrom returned null for the OpenXmlPart " + part.Uri);
         }
 
-        documentElement = (XElement)AcceptAllOtherRevisionsTransform(documentElement);
+        documentElement = (XElement?)AcceptAllOtherRevisionsTransform(documentElement) ?? throw new InvalidOperationException("AcceptAllOtherRevisionsTransform returned null for the OpenXmlPart " + part.Uri);
         documentElement = (XElement)AcceptDeletedCellsTransform(documentElement);
         documentElement = (XElement)MergeAdjacentTablesTransform(documentElement);
         documentElement = (XElement)AddEmptyParagraphToAnyEmptyCells(documentElement);
         documentElement.Descendants().Attributes().Where(a => a.Name == PT.UniqueId || a.Name == PT.RunIds).Remove();
         documentElement.Descendants(W.numPr).Where(np => !np.HasElements).Remove();
-        XDocument newXDoc = new XDocument(documentElement);
+        var newXDoc = new XDocument(documentElement);
         part.PutXDocument(newXDoc);
     }
 
@@ -1408,10 +1397,10 @@ public class RevisionProcessor
     public static XElement AcceptRevisionsForElement(XElement element)
     {
         XElement rElement = element;
-        rElement = (XElement)RemoveRsidTransform(rElement);
+        rElement = (XElement?)RemoveRsidTransform(rElement) ?? throw new InvalidOperationException("RemoveRsidTransform returned null for the element " + rElement.Name);
         var containsMoveFromMoveTo = rElement.Descendants(W.moveFrom).Any();
-        rElement = (XElement)AcceptMoveFromMoveToTransform(rElement);
-        rElement = (XElement)AcceptAllOtherRevisionsTransform(rElement);
+        rElement = (XElement?)AcceptMoveFromMoveToTransform(rElement) ?? throw new InvalidOperationException("AcceptMoveFromMoveToTransform returned null for the element " + rElement.Name);
+        rElement = (XElement?)AcceptAllOtherRevisionsTransform(rElement) ?? throw new InvalidOperationException("AcceptAllOtherRevisionsTransform returned null for the element " + rElement.Name);
         rElement.Descendants().Attributes().Where(a => a.Name == PT.UniqueId || a.Name == PT.RunIds).Remove();
         rElement.Descendants(W.numPr).Where(np => !np.HasElements).Remove();
         return rElement;
@@ -1419,8 +1408,7 @@ public class RevisionProcessor
 
     private static object FixUpDeletedOrInsertedFieldCodesTransform(XNode node)
     {
-        var element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.p)
             {
@@ -1464,7 +1452,7 @@ public class RevisionProcessor
                 var newParaContents = grouped
                     .Select((g, i) =>
                     {
-                        if (g.Key == 1 || g.Key == 2 || g.Key == 3)
+                        if (g.Key is 1 or 2 or 3)
                         {
                             return (object)g.Select(gc => FixUpDeletedOrInsertedFieldCodesTransform(gc.Ele));
                         }
@@ -1476,8 +1464,8 @@ public class RevisionProcessor
                                 return g.Select(gc => FixUpDeletedOrInsertedFieldCodesTransform(gc.Ele));
                             }
 
-                            if (grouped[i-1].Key == 2 &&
-                                grouped[i+1].Key == 2)
+                            if (grouped[i - 1].Key == 2 &&
+                                grouped[i + 1].Key == 2)
                             {
                                 return new XElement(W.del,
                                     g.Select(gc => TransformInstrTextToDelInstrText(gc.Ele)));
@@ -1504,15 +1492,14 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => FixUpDeletedOrInsertedFieldCodesTransform(n)));
+                element.Nodes().Select(FixUpDeletedOrInsertedFieldCodesTransform));
         }
         return node;
     }
 
     private static object TransformInstrTextToDelInstrText(XNode node)
     {
-        var element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.instrText)
             {
@@ -1523,15 +1510,14 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => TransformInstrTextToDelInstrText(n)));
+                element.Nodes().Select(TransformInstrTextToDelInstrText));
         }
         return node;
     }
 
     private static object AddEmptyParagraphToAnyEmptyCells(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.tc && !element.Elements().Where(e => e.Name != W.tcPr).Any())
             {
@@ -1543,12 +1529,12 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AddEmptyParagraphToAnyEmptyCells(n)));
+                element.Nodes().Select(AddEmptyParagraphToAnyEmptyCells));
         }
         return node;
     }
 
-    private static Dictionary<XName, int> Order_tcPr = new Dictionary<XName, int>
+    private static readonly Dictionary<XName, int> Order_tcPr = new()
     {
         { W.cnfStyle, 10 },
         { W.tcW, 20 },
@@ -1581,14 +1567,11 @@ public class RevisionProcessor
                 {
                     int? gridSpan = (int?)tc.Elements(W.tcPr).Elements(W.gridSpan).Attributes(W.val).FirstOrDefault();
 
-                    if (gridSpan == null)
-                    {
-                        gridSpan = 1;
-                    }
+                    gridSpan ??= 1;
 
                     var z = Math.Min(gridLines.Length - 1, lastUsed + (int)gridSpan);
                     int w = gridLines.Where((g, i) => i > lastUsed && i <= z).Sum();
-                    tcW.Value = w.ToString();
+                    tcW.Value = w.ToString(CultureInfo.InvariantCulture);
 
                     lastUsed += (int)gridSpan;
                     used += (int)gridSpan;
@@ -1598,14 +1581,13 @@ public class RevisionProcessor
         return newTbl;
     }
 
-    private static object AcceptMoveFromMoveToTransform(XNode node)
+    private static object? AcceptMoveFromMoveToTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.moveTo)
             {
-                return element.Nodes().Select(n => AcceptMoveFromMoveToTransform(n));
+                return element.Nodes().Select(AcceptMoveFromMoveToTransform);
             }
 
             if (element.Name == W.moveFrom)
@@ -1615,41 +1597,39 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptMoveFromMoveToTransform(n)));
+                element.Nodes().Select(AcceptMoveFromMoveToTransform));
         }
         return node;
     }
 
     private static XElement AcceptMoveFromRanges(XElement document)
     {
-        string wordProcessingNamespacePrefix = document.GetPrefixOfNamespace(W.w);
+        _ = document.GetPrefixOfNamespace(W.w);
 
         // The following lists contain the elements that are between start/end elements.
-        List<XElement> startElementTagsInMoveFromRange = new List<XElement>();
-        List<XElement> endElementTagsInMoveFromRange = new List<XElement>();
+        var startElementTagsInMoveFromRange = new List<XElement>();
+        var endElementTagsInMoveFromRange = new List<XElement>();
 
         // Following are the elements that *may* be in a range that has both start and end
         // elements.
-        Dictionary<string, PotentialInRangeElements> potentialDeletedElements =
+        var potentialDeletedElements =
             new Dictionary<string, PotentialInRangeElements>();
 
         foreach (var tag in DescendantAndSelfTags(document))
         {
             if (tag.Element.Name == W.moveFromRangeStart)
             {
-                string id = tag.Element.Attribute(W.id).Value;
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Attribute W.id is missing for element " + tag.Element.Name);
                 potentialDeletedElements.Add(id, new PotentialInRangeElements());
                 continue;
             }
             if (tag.Element.Name == W.moveFromRangeEnd)
             {
-                string id = tag.Element.Attribute(W.id).Value;
-                if (potentialDeletedElements.ContainsKey(id))
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Attribute W.id is missing for element " + tag.Element.Name);
+                if (potentialDeletedElements.TryGetValue(id, out PotentialInRangeElements? value1))
                 {
-                    startElementTagsInMoveFromRange.AddRange(
-                        potentialDeletedElements[id].PotentialStartElementTagsInRange);
-                    endElementTagsInMoveFromRange.AddRange(
-                        potentialDeletedElements[id].PotentialEndElementTagsInRange);
+                    startElementTagsInMoveFromRange.AddRange(value1.PotentialStartElementTagsInRange);
+                    endElementTagsInMoveFromRange.AddRange(value1.PotentialEndElementTagsInRange);
                     potentialDeletedElements.Remove(id);
                 }
                 continue;
@@ -1694,10 +1674,10 @@ public class RevisionProcessor
         var moveFromElementsToDelete = startElementTagsInMoveFromRange
             .Intersect(endElementTagsInMoveFromRange)
             .ToArray();
-        if (moveFromElementsToDelete.Count() > 0)
+        if (moveFromElementsToDelete.Length > 0)
         {
-            return (XElement)AcceptMoveFromRangesTransform(
-                document, moveFromElementsToDelete);
+            return (XElement?)AcceptMoveFromRangesTransform(
+                document, moveFromElementsToDelete) ?? throw new InvalidOperationException("AcceptMoveFromRangesTransform returned null");
         }
 
         return document;
@@ -1711,8 +1691,7 @@ public class RevisionProcessor
 
     private static object AcceptParagraphEndTagsInMoveFromTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (W.BlockLevelContentContainers.Contains(element.Name))
             {
@@ -1721,7 +1700,7 @@ public class RevisionProcessor
                     .GroupAdjacent(c =>
                     {
                         BlockContentInfo pi = c.GetParagraphInfo();
-                        if (pi.ThisBlockContentElement != null)
+                        if (pi.HasBlockContentElement)
                         {
                             bool paragraphMarkIsInMoveFromRange =
                                 pi.ThisBlockContentElement.Elements(W.moveFromRangeStart).Any() &&
@@ -1731,14 +1710,13 @@ public class RevisionProcessor
                                 return MoveFromCollectionType.ParagraphEndTagInMoveFromRange;
                             }
                         }
-                        XElement previousContentElement = c.ContentElementsBeforeSelf()
-                            .Where(e => e.GetParagraphInfo().ThisBlockContentElement != null)
-                            .FirstOrDefault();
+                        XElement? previousContentElement = c.ContentElementsBeforeSelf()
+                            .FirstOrDefault(e => e.GetParagraphInfo().HasBlockContentElement);
                         if (previousContentElement != null)
                         {
                             BlockContentInfo pi2 = previousContentElement.GetParagraphInfo();
                             if (c.Name == W.p &&
-                                pi2.ThisBlockContentElement.Elements(W.moveFromRangeStart).Any() &&
+                                pi2.ThisBlockContentElement!.Elements(W.moveFromRangeStart).Any() &&
                                 !pi2.ThisBlockContentElement.Elements(W.moveFromRangeEnd).Any())
                             {
                                 return MoveFromCollectionType.ParagraphEndTagInMoveFromRange;
@@ -1750,16 +1728,16 @@ public class RevisionProcessor
 
                 // If there is only one group, and it's key is MoveFromCollectionType.Other
                 // then there is nothing to do.
-                if (groupedBodyChildren.Count() == 1 &&
+                if (groupedBodyChildren.Count == 1 &&
                     groupedBodyChildren.First().Key == MoveFromCollectionType.Other)
                 {
-                    XElement newElement = new XElement(element.Name,
+                    var newElement = new XElement(element.Name,
                         element.Attributes(),
                         groupedBodyChildren.Select(g =>
                         {
                             if (g.Key == MoveFromCollectionType.Other)
                             {
-                                return (object)g;
+                                return g;
                             }
 
                             // This is a transform that produces the first element in the
@@ -1776,38 +1754,36 @@ public class RevisionProcessor
                 {
                     return new XElement(element.Name,
                         element.Attributes(),
-                        element.Nodes().Select(n =>
-                            AcceptParagraphEndTagsInMoveFromTransform(n)));
+                        element.Nodes().Select(AcceptParagraphEndTagsInMoveFromTransform));
                 }
             }
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptParagraphEndTagsInMoveFromTransform(n)));
+                element.Nodes().Select(AcceptParagraphEndTagsInMoveFromTransform));
         }
         return node;
     }
 
-    private static object AcceptAllOtherRevisionsTransform(XNode node)
+    private static object? AcceptAllOtherRevisionsTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
-            /// Accept inserted text, inserted paragraph marks, etc.
-            /// Collapse all w:ins elements.
+            // Accept inserted text, inserted paragraph marks, etc.
+            // Collapse all w:ins elements.
 
             if (element.Name == W.ins)
             {
                 return element
                     .Nodes()
-                    .Select(n => AcceptAllOtherRevisionsTransform(n));
+                    .Select(AcceptAllOtherRevisionsTransform);
             }
 
-            /// Remove all of the following elements.  These elements are processed in:
-            ///   AcceptDeletedAndMovedFromContentControls
-            ///   AcceptMoveFromMoveToTransform
-            ///   AcceptDeletedAndMoveFromParagraphMarksTransform
-            ///   AcceptParagraphEndTagsInMoveFromTransform
-            ///   AcceptMoveFromRanges
+            // Remove all of the following elements.  These elements are processed in:
+            //   AcceptDeletedAndMovedFromContentControls
+            //   AcceptMoveFromMoveToTransform
+            //   AcceptDeletedAndMoveFromParagraphMarksTransform
+            //   AcceptParagraphEndTagsInMoveFromTransform
+            //   AcceptMoveFromRanges
 
             if (element.Name == W.customXmlDelRangeStart ||
                 element.Name == W.customXmlDelRangeEnd ||
@@ -1825,18 +1801,18 @@ public class RevisionProcessor
                 return null;
             }
 
-            /// Accept revisions in formatting on paragraphs.
-            /// Accept revisions in formatting on runs.
-            /// Accept revisions for applied styles to a table.
-            /// Accept revisions for grid revisions to a table.
-            /// Accept revisions for column properties.
-            /// Accept revisions for row properties.
-            /// Accept revisions for table level property exceptions.
-            /// Accept revisions for section properties.
-            /// Accept numbering revision in fields.
-            /// Accept deleted field code text.
-            /// Accept deleted literal text.
-            /// Accept inserted cell.
+            // Accept revisions in formatting on paragraphs.
+            // Accept revisions in formatting on runs.
+            // Accept revisions for applied styles to a table.
+            // Accept revisions for grid revisions to a table.
+            // Accept revisions for column properties.
+            // Accept revisions for row properties.
+            // Accept revisions for table level property exceptions.
+            // Accept revisions for section properties.
+            // Accept numbering revision in fields.
+            // Accept deleted field code text.
+            // Accept deleted literal text.
+            // Accept inserted cell.
 
             if (element.Name == W.pPrChange ||
                 element.Name == W.rPrChange ||
@@ -1886,16 +1862,16 @@ public class RevisionProcessor
             //     to <w:vMerge w:val="continue"/>
 
             if (element.Name == W.cellMerge &&
-                element.Parent.Name == W.tcPr &&
-                (string)element.Attribute(W.vMerge) == "rest")
+                element.Parent?.Name == W.tcPr &&
+                (string?)element.Attribute(W.vMerge) == "rest")
             {
                 return new XElement(W.vMerge,
                     new XAttribute(W.val, "restart"));
             }
 
             if (element.Name == W.cellMerge &&
-                element.Parent.Name == W.tcPr &&
-                (string)element.Attribute(W.vMerge) == "cont")
+                element.Parent?.Name == W.tcPr &&
+                (string?)element.Attribute(W.vMerge) == "cont")
             {
                 return new XElement(W.vMerge,
                     new XAttribute(W.val, "continue"));
@@ -1904,15 +1880,14 @@ public class RevisionProcessor
             // Otherwise do identity clone.
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptAllOtherRevisionsTransform(n)));
+                element.Nodes().Select(AcceptAllOtherRevisionsTransform));
         }
         return node;
     }
 
     private static object CollapseParagraphTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.p)
             {
@@ -1921,7 +1896,7 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => CollapseParagraphTransform(n)));
+                element.Nodes().Select(CollapseParagraphTransform));
         }
         return node;
     }
@@ -1933,18 +1908,18 @@ public class RevisionProcessor
         Other
     };
 
-    /// Accept deleted paragraphs.
-    ///
-    /// Group together all paragraphs that contain w:p/w:pPr/w:rPr/w:del elements.  Make a
-    /// second group for the content element immediately following a paragraph that contains
-    /// a w:del element.  The code uses the approach of dealing with paragraph content at
-    /// 'levels', ignoring paragraph content at other levels.  Form a new paragraph that
-    /// contains the content of the grouped paragraphs with deleted paragraph marks, and the
-    /// content of the paragraph immediately following a paragraph that contains a deleted
-    /// paragraph mark.  Include in the new paragraph the paragraph properties from the
-    /// paragraph following.  When assembling the new paragraph, use a transform that collapses
-    /// the paragraph nodes when adding content, thereby preserving custom XML and content
-    /// controls.
+    // Accept deleted paragraphs.
+    //
+    // Group together all paragraphs that contain w:p/w:pPr/w:rPr/w:del elements.  Make a
+    // second group for the content element immediately following a paragraph that contains
+    // a w:del element.  The code uses the approach of dealing with paragraph content at
+    // 'levels', ignoring paragraph content at other levels.  Form a new paragraph that
+    // contains the content of the grouped paragraphs with deleted paragraph marks, and the
+    // content of the paragraph immediately following a paragraph that contains a deleted
+    // paragraph mark.  Include in the new paragraph the paragraph properties from the
+    // paragraph following.  When assembling the new paragraph, use a transform that collapses
+    // the paragraph nodes when adding content, thereby preserving custom XML and content
+    // controls.
 
     private static void AnnotateBlockContentElements(XElement contentContainer)
     {
@@ -1956,7 +1931,7 @@ public class RevisionProcessor
             return;
         }
 
-        XElement firstContentElement = contentContainer
+        XElement? firstContentElement = contentContainer
             .Elements()
             .DescendantsAndSelf()
             .FirstOrDefault(e => e.Name == W.p || e.Name == W.tbl);
@@ -1966,7 +1941,7 @@ public class RevisionProcessor
         }
 
         // Add the annotation on the contentContainer.
-        BlockContentInfo currentContentInfo = new BlockContentInfo()
+        var currentContentInfo = new BlockContentInfo()
         {
             PreviousBlockContentElement = null,
             ThisBlockContentElement = firstContentElement,
@@ -1978,7 +1953,7 @@ public class RevisionProcessor
         {
             currentContentInfo.ThisBlockContentElement.AddAnnotation(currentContentInfo);
             // Find next sibling content element.
-            XElement nextContentElement = null;
+            XElement? nextContentElement = null;
             XElement current = currentContentInfo.ThisBlockContentElement;
             while (true)
             {
@@ -1991,7 +1966,7 @@ public class RevisionProcessor
                     currentContentInfo.NextBlockContentElement = nextContentElement;
                     break;
                 }
-                current = current.Parent;
+                current = current.Parent ?? throw new InvalidOperationException("Unexpected null parent");
                 // When we've backed up the tree to the contentContainer, we're done.
                 if (current == contentContainer)
                 {
@@ -2009,14 +1984,14 @@ public class RevisionProcessor
 
     private static IEnumerable<BlockContentInfo> IterateBlockContentElements(XElement element)
     {
-        XElement current = element.Elements().FirstOrDefault();
+        XElement? current = element.Elements().FirstOrDefault();
         if (current == null)
         {
             yield break;
         }
 
         AnnotateBlockContentElements(element);
-        BlockContentInfo currentBlockContentInfo = element.Annotation<BlockContentInfo>();
+        BlockContentInfo? currentBlockContentInfo = element.Annotation<BlockContentInfo>();
         if (currentBlockContentInfo != null)
         {
             while (true)
@@ -2027,16 +2002,16 @@ public class RevisionProcessor
                     yield break;
                 }
 
-                currentBlockContentInfo = currentBlockContentInfo.NextBlockContentElement.Annotation<BlockContentInfo>();
+                currentBlockContentInfo = currentBlockContentInfo.NextBlockContentElement.Annotation<BlockContentInfo>() ?? throw new InvalidOperationException("Unexpected null annotation");
             }
         }
     }
 
-    public static class PT
+    internal static class PT
     {
-        public static XNamespace pt = "http://www.codeplex.com/PowerTools/2009/RevisionAccepter";
-        public static XName UniqueId = pt + "UniqueId";
-        public static XName RunIds = pt + "RunIds";
+        public static readonly XNamespace RevisionAccepterNamespace = "http://www.codeplex.com/PowerTools/2009/RevisionAccepter";
+        public static readonly XName UniqueId = RevisionAccepterNamespace + "UniqueId";
+        public static readonly XName RunIds = RevisionAccepterNamespace + "RunIds";
     }
 
     private static void AnnotateRunElementsWithId(XElement element)
@@ -2063,7 +2038,7 @@ public class RevisionProcessor
             e.Add(new XAttribute(PT.RunIds,
                 e.DescendantsTrimmed(W.txbxContent)
                  .Where(d => d.Name == W.r)
-                 .Select(r => r.Attribute(PT.UniqueId).Value)
+                 .Select(r => r.Attribute(PT.UniqueId)?.Value)
                  .StringConcatenate(s => s + ",")
                  .Trim(',')),
                 new XAttribute(PT.UniqueId, sdtId++));
@@ -2075,11 +2050,11 @@ public class RevisionProcessor
         var originalContentControls = original.Descendants(W.sdt).ToList();
         var existingContentControls = newDocument.Descendants(W.sdt).ToList();
         var contentControlsToAdd = originalContentControls
-            .Select(occ => occ.Attribute(PT.UniqueId).Value)
+            .Select(occ => occ.Attribute(PT.UniqueId)?.Value)
             .Except(existingContentControls
-                .Select(ecc => ecc.Attribute(PT.UniqueId).Value));
+                .Select(ecc => ecc.Attribute(PT.UniqueId)?.Value));
         foreach (var contentControl in originalContentControls
-            .Where(occ => contentControlsToAdd.Contains(occ.Attribute(PT.UniqueId).Value)))
+            .Where(occ => contentControlsToAdd.Contains(occ.Attribute(PT.UniqueId)?.Value)))
         {
             // TODO - Need a slight modification here.  If there is a paragraph
             // in the content control that contains no runs, then the paragraph isn't included in the
@@ -2087,13 +2062,13 @@ public class RevisionProcessor
             // To see an example of this, see example document "NumberingParagraphPropertiesChange.docxs"
 
             // Fully deleted paragraphs may have removed some of the original runs.
-            var runIds = new HashSet<string>(contentControl.Attribute(PT.RunIds).Value.Split(','));
+            var runIds = new HashSet<string>(contentControl.Attribute(PT.RunIds)?.Value.Split(',') ?? []);
             var runsInNewDocument = newDocument.Descendants(W.r)
-                .Where(r => runIds.Contains(r.Attribute(PT.UniqueId).Value))
+                .Where(r => r.Attribute(PT.UniqueId)?.Value is string uniqueId && runIds.Contains(uniqueId))
                 .ToList();
 
             // find common ancestor
-            List<XElement> runAncestorIntersection = null;
+            List<XElement>? runAncestorIntersection = null;
             foreach (var run in runsInNewDocument)
             {
                 if (runAncestorIntersection == null)
@@ -2121,41 +2096,39 @@ public class RevisionProcessor
                 .Elements()
                 .First(c => c.DescendantsAndSelf()
                     .Any(z => z.Name == W.r &&
-                         z.Attribute(PT.UniqueId).Value == runsInNewDocument.First().Attribute(PT.UniqueId).Value));
+                         z.Attribute(PT.UniqueId)?.Value == runsInNewDocument.First().Attribute(PT.UniqueId)?.Value));
             var lastRunChild = commonAncestor
                 .Elements()
                 .First(c => c.DescendantsAndSelf()
                     .Any(z => z.Name == W.r &&
-                         z.Attribute(PT.UniqueId).Value == runsInNewDocument.Last().Attribute(PT.UniqueId).Value));
+                         z.Attribute(PT.UniqueId)?.Value == runsInNewDocument.Last().Attribute(PT.UniqueId)?.Value));
 
-            /// If the list of runs for the content control is exactly the list of runs for the paragraph, then
-            /// create the content control surrounding the paragraph, not surrounding the runs.
+            // If the list of runs for the content control is exactly the list of runs for the paragraph, then
+            // create the content control surrounding the paragraph, not surrounding the runs.
 
             if (commonAncestor.Name == W.p &&
                 commonAncestor.Elements()
-                    .Where(e => e.Name != W.pPr &&
+                    .FirstOrDefault(e => e.Name != W.pPr &&
                         e.Name != W.commentRangeStart &&
-                        e.Name != W.commentRangeEnd)
-                    .FirstOrDefault() == firstRunChild &&
+                        e.Name != W.commentRangeEnd) == firstRunChild &&
                 commonAncestor.Elements()
-                    .Where(e => e.Name != W.pPr &&
+                    .LastOrDefault(e => e.Name != W.pPr &&
                         e.Name != W.commentRangeStart &&
-                        e.Name != W.commentRangeEnd)
-                    .LastOrDefault() == lastRunChild)
+                        e.Name != W.commentRangeEnd) == lastRunChild)
             {
                 // replace commonAncestor with content control containing commonAncestor
-                XElement newContentControl = new XElement(contentControl.Name,
+                var newContentControl = new XElement(contentControl.Name,
                     contentControl.Attributes(),
                     contentControl.Elements().Where(e => e.Name != W.sdtContent),
                     new XElement(W.sdtContent, commonAncestor));
 
-                XElement newContentControlOrdered = new XElement(newContentControl.Name,
+                var newContentControlOrdered = new XElement(newContentControl.Name,
                     newContentControl.Attributes(),
                     newContentControl.Elements().OrderBy(e =>
                     {
-                        if (Order_sdt.ContainsKey(e.Name))
+                        if (Order_sdt.TryGetValue(e.Name, out var value1))
                         {
-                            return Order_sdt[e.Name];
+                            return value1;
                         }
 
                         return 999;
@@ -2165,16 +2138,16 @@ public class RevisionProcessor
                 continue;
             }
 
-            List<XElement> elementsBeforeRange = commonAncestor
+            var elementsBeforeRange = commonAncestor
                 .Elements()
                 .TakeWhile(e => e != firstRunChild)
                 .ToList();
-            List<XElement> elementsInRange = commonAncestor
+            var elementsInRange = commonAncestor
                 .Elements()
                 .SkipWhile(e => e != firstRunChild)
                 .TakeWhile(e => e != lastRunChild.ElementsAfterSelf().FirstOrDefault())
                 .ToList();
-            List<XElement> elementsAfterRange = commonAncestor
+            var elementsAfterRange = commonAncestor
                 .Elements()
                 .SkipWhile(e => e != lastRunChild.ElementsAfterSelf().FirstOrDefault())
                 .ToList();
@@ -2182,18 +2155,18 @@ public class RevisionProcessor
             // detatch from current parent
             commonAncestor.Elements().Remove();
 
-            XElement newContentControl2 = new XElement(contentControl.Name,
+            var newContentControl2 = new XElement(contentControl.Name,
                 contentControl.Attributes(),
                 contentControl.Elements().Where(e => e.Name != W.sdtContent),
                 new XElement(W.sdtContent, elementsInRange));
 
-            XElement newContentControlOrdered2 = new XElement(newContentControl2.Name,
+            var newContentControlOrdered2 = new XElement(newContentControl2.Name,
                 newContentControl2.Attributes(),
                 newContentControl2.Elements().OrderBy(e =>
                 {
-                    if (Order_sdt.ContainsKey(e.Name))
+                    if (Order_sdt.TryGetValue(e.Name, out var value1))
                     {
-                        return Order_sdt[e.Name];
+                        return value1;
                     }
 
                     return 999;
@@ -2207,7 +2180,7 @@ public class RevisionProcessor
         return newDocument;
     }
 
-    private static Dictionary<XName, int> Order_sdt = new Dictionary<XName, int>
+    private static readonly Dictionary<XName, int> Order_sdt = new()
     {
         { W.sdtPr, 10 },
         { W.sdtEndPr, 20 },
@@ -2220,18 +2193,18 @@ public class RevisionProcessor
     {
         AnnotateRunElementsWithId(element);
         AnnotateContentControlsWithRunIds(element);
-        XElement newElement = (XElement)AcceptDeletedAndMoveFromParagraphMarksTransform(element);
+        var newElement = (XElement)AcceptDeletedAndMoveFromParagraphMarksTransform(element);
         XElement withBlockLevelContentControls = AddBlockLevelContentControls(newElement, element);
         return withBlockLevelContentControls;
     }
 
-    enum GroupingType
+    internal enum GroupingType
     {
         DeletedRange,
         Other,
     };
 
-    class GroupingInfo
+    private sealed class GroupingInfo
     {
         public GroupingType GroupingType;
         public int GroupingKey;
@@ -2239,12 +2212,11 @@ public class RevisionProcessor
 
     private static object AcceptDeletedAndMoveFromParagraphMarksTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (W.BlockLevelContentContainers.Contains(element.Name))
             {
-                XElement bodySectPr = null;
+                XElement? bodySectPr = null;
                 if (element.Name == W.body)
                 {
                     bodySectPr = element.Element(W.sectPr);
@@ -2266,8 +2238,7 @@ public class RevisionProcessor
                             .Elements(W.pPr)
                             .Elements(W.rPr)
                             .Elements()
-                            .Where(e => e.Name == W.del || e.Name == W.moveFrom)
-                            .Any();
+                            .Any(e => e.Name == W.del || e.Name == W.moveFrom);
 
                         if (paragraphMarkIsDeletedOrMovedFrom)
                         {
@@ -2276,7 +2247,8 @@ public class RevisionProcessor
                                 state = 1;
                                 currentKey += 1;
                                 deletedParagraphGroupingInfo.Add(
-                                    new GroupingInfo() {
+                                    new GroupingInfo()
+                                    {
                                         GroupingType = GroupingType.DeletedRange,
                                         GroupingKey = currentKey,
                                     });
@@ -2376,14 +2348,14 @@ public class RevisionProcessor
                     .GroupAdjacent(z => z.GroupingInfo.GroupingKey);
 
                 // Create a new block level content container.
-                XElement newBlockLevelContentContainer = new XElement(element.Name,
+                var newBlockLevelContentContainer = new XElement(element.Name,
                     element.Attributes(),
                     element.Elements().Where(e => e.Name == W.tcPr),
                     groupedParagraphs.Select((g, i) =>
                     {
                         if (g.First().GroupingInfo.GroupingType == GroupingType.DeletedRange)
                         {
-                            XElement newParagraph = new XElement(W.p,
+                            var newParagraph = new XElement(W.p,
 #if false
                                 // previously, this was set to g.First()
                                 // however, this caused test [InlineData("RP/RP052-Deleted-Para-Mark.docx")] to lose paragraph numbering for a paragraph that we did not want to loose it for.
@@ -2400,7 +2372,7 @@ public class RevisionProcessor
                             if (allIsDeleted &&
                                 g.Last().BlockLevelContent.ThisBlockContentElement.Elements(W.pPr).Elements(W.rPr).Elements(W.del).Any() &&
                                 (g.Last().BlockLevelContent.NextBlockContentElement == null ||
-                                 g.Last().BlockLevelContent.NextBlockContentElement.Name == W.tbl))
+                                 g.Last().BlockLevelContent.NextBlockContentElement?.Name == W.tbl))
                             {
                                 return null;
                             }
@@ -2413,7 +2385,7 @@ public class RevisionProcessor
                             {
                                 var newEle = new XElement(z.BlockLevelContent.ThisBlockContentElement.Name,
                                     z.BlockLevelContent.ThisBlockContentElement.Attributes(),
-                                    z.BlockLevelContent.ThisBlockContentElement.Nodes().Select(n => AcceptDeletedAndMoveFromParagraphMarksTransform(n)));
+                                    z.BlockLevelContent.ThisBlockContentElement.Nodes().Select(AcceptDeletedAndMoveFromParagraphMarksTransform));
                                 return newEle;
                             });
                         }
@@ -2426,7 +2398,7 @@ public class RevisionProcessor
             // Otherwise, identity clone.
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptDeletedAndMoveFromParagraphMarksTransform(n)));
+                element.Nodes().Select(AcceptDeletedAndMoveFromParagraphMarksTransform));
         }
         return node;
     }
@@ -2436,7 +2408,7 @@ public class RevisionProcessor
     {
         // needs collapse
         // dir, bdo, sdt, ins, moveTo, smartTag
-        var testP = (XElement)CollapseTransform(p);
+        var testP = (XElement?)CollapseTransform(p) ?? throw new InvalidOperationException("Failed to collapse paragraph.");
 
         var childElements = testP.Elements();
         var contentElements = childElements
@@ -2448,7 +2420,7 @@ public class RevisionProcessor
                     return (bool)b;
                 }
 
-                throw new Exception("Internal error 20, found element " + ce.Name.ToString());
+                throw new InvalidOperationException("Internal error 20, found element " + ce.Name);
             });
         if (contentElements.Any())
         {
@@ -2459,10 +2431,9 @@ public class RevisionProcessor
     }
 
     // dir, bdo, sdt, ins, moveTo, smartTag
-    private static object CollapseTransform(XNode node)
+    private static object? CollapseTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.dir ||
                 element.Name == W.bdr ||
@@ -2485,7 +2456,7 @@ public class RevisionProcessor
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => CollapseTransform(n)));
+                element.Nodes().Select(CollapseTransform));
         }
         return node;
     }
@@ -2542,7 +2513,7 @@ public class RevisionProcessor
             Element = element,
             TagType = TagTypeEnum.Element
         };
-        Stack<IEnumerator<XElement>> iteratorStack = new Stack<IEnumerator<XElement>>();
+        var iteratorStack = new Stack<IEnumerator<XElement>>();
         iteratorStack.Push(element.Elements().GetEnumerator());
         while (iteratorStack.Count > 0)
         {
@@ -2583,15 +2554,15 @@ public class RevisionProcessor
         };
     }
 
-    private class PotentialInRangeElements
+    private sealed class PotentialInRangeElements
     {
         public List<XElement> PotentialStartElementTagsInRange;
         public List<XElement> PotentialEndElementTagsInRange;
 
         public PotentialInRangeElements()
         {
-            PotentialStartElementTagsInRange = new List<XElement>();
-            PotentialEndElementTagsInRange = new List<XElement>();
+            PotentialStartElementTagsInRange = [];
+            PotentialEndElementTagsInRange = [];
         }
     }
 
@@ -2602,23 +2573,22 @@ public class RevisionProcessor
         EmptyElement
     }
 
-    private class Tag
+    private sealed class Tag
     {
-        public XElement Element;
-        public TagTypeEnum TagType;
+        public required XElement Element { get; init; }
+        public TagTypeEnum TagType { get; init; }
     }
 
-    private static object AcceptDeletedAndMovedFromContentControlsTransform(XNode node,
+    private static object? AcceptDeletedAndMovedFromContentControlsTransform(XNode node,
         XElement[] contentControlElementsToCollapse,
         XElement[] moveFromElementsToDelete)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.sdt && contentControlElementsToCollapse.Contains(element))
             {
                 return element
-                    .Element(W.sdtContent)
+                    .Element(W.sdtContent)?
                     .Nodes()
                     .Select(n => AcceptDeletedAndMovedFromContentControlsTransform(
                         n, contentControlElementsToCollapse, moveFromElementsToDelete));
@@ -2639,57 +2609,53 @@ public class RevisionProcessor
 
     private static XElement AcceptDeletedAndMovedFromContentControls(XElement documentRootElement)
     {
-        string wordProcessingNamespacePrefix = documentRootElement.GetPrefixOfNamespace(W.w);
+        _ = documentRootElement.GetPrefixOfNamespace(W.w);
 
         // The following lists contain the elements that are between start/end elements.
-        List<XElement> startElementTagsInDeleteRange = new List<XElement>();
-        List<XElement> endElementTagsInDeleteRange = new List<XElement>();
-        List<XElement> startElementTagsInMoveFromRange = new List<XElement>();
-        List<XElement> endElementTagsInMoveFromRange = new List<XElement>();
+        var startElementTagsInDeleteRange = new List<XElement>();
+        var endElementTagsInDeleteRange = new List<XElement>();
+        var startElementTagsInMoveFromRange = new List<XElement>();
+        var endElementTagsInMoveFromRange = new List<XElement>();
 
         // Following are the elements that *may* be in a range that has both start and end
         // elements.
-        Dictionary<string, PotentialInRangeElements> potentialDeletedElements =
+        var potentialDeletedElements =
             new Dictionary<string, PotentialInRangeElements>();
-        Dictionary<string, PotentialInRangeElements> potentialMoveFromElements =
+        var potentialMoveFromElements =
             new Dictionary<string, PotentialInRangeElements>();
 
         foreach (var tag in DescendantAndSelfTags(documentRootElement))
         {
             if (tag.Element.Name == W.customXmlDelRangeStart)
             {
-                string id = tag.Element.Attribute(W.id).Value;
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Missing id attribute");
                 potentialDeletedElements.Add(id, new PotentialInRangeElements());
                 continue;
             }
             if (tag.Element.Name == W.customXmlDelRangeEnd)
             {
-                string id = tag.Element.Attribute(W.id).Value;
-                if (potentialDeletedElements.ContainsKey(id))
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Missing id attribute");
+                if (potentialDeletedElements.TryGetValue(id, out PotentialInRangeElements? value1))
                 {
-                    startElementTagsInDeleteRange.AddRange(
-                        potentialDeletedElements[id].PotentialStartElementTagsInRange);
-                    endElementTagsInDeleteRange.AddRange(
-                        potentialDeletedElements[id].PotentialEndElementTagsInRange);
+                    startElementTagsInDeleteRange.AddRange(value1.PotentialStartElementTagsInRange);
+                    endElementTagsInDeleteRange.AddRange(value1.PotentialEndElementTagsInRange);
                     potentialDeletedElements.Remove(id);
                 }
                 continue;
             }
             if (tag.Element.Name == W.customXmlMoveFromRangeStart)
             {
-                string id = tag.Element.Attribute(W.id).Value;
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Missing id attribute");
                 potentialMoveFromElements.Add(id, new PotentialInRangeElements());
                 continue;
             }
             if (tag.Element.Name == W.customXmlMoveFromRangeEnd)
             {
-                string id = tag.Element.Attribute(W.id).Value;
-                if (potentialMoveFromElements.ContainsKey(id))
+                string id = tag.Element.Attribute(W.id)?.Value ?? throw new InvalidOperationException("Missing id attribute");
+                if (potentialMoveFromElements.TryGetValue(id, out PotentialInRangeElements? value2))
                 {
-                    startElementTagsInMoveFromRange.AddRange(
-                        potentialMoveFromElements[id].PotentialStartElementTagsInRange);
-                    endElementTagsInMoveFromRange.AddRange(
-                        potentialMoveFromElements[id].PotentialEndElementTagsInRange);
+                    startElementTagsInMoveFromRange.AddRange(value2.PotentialStartElementTagsInRange);
+                    endElementTagsInMoveFromRange.AddRange(value2.PotentialEndElementTagsInRange);
                     potentialMoveFromElements.Remove(id);
                 }
                 continue;
@@ -2740,7 +2706,7 @@ public class RevisionProcessor
                 }
                 throw new PowerToolsInvalidDataException("Should not have reached this point.");
             }
-            if (potentialMoveFromElements.Count() > 0 &&
+            if (potentialMoveFromElements.Count > 0 &&
                 tag.Element.Name != W.moveFromRangeStart &&
                 tag.Element.Name != W.moveFromRangeEnd &&
                 tag.Element.Name != W.customXmlMoveFromRangeStart &&
@@ -2787,7 +2753,7 @@ public class RevisionProcessor
         {
             var newDoc = AcceptDeletedAndMovedFromContentControlsTransform(documentRootElement,
                 contentControlElementsToCollapse, elementsToDeleteBecauseMovedFrom);
-            return newDoc as XElement;
+            return newDoc as XElement ?? throw new InvalidOperationException("Expected XElement");
         }
         else
         {
@@ -2795,11 +2761,10 @@ public class RevisionProcessor
         }
     }
 
-    private static object AcceptMoveFromRangesTransform(XNode node,
+    private static object? AcceptMoveFromRangesTransform(XNode node,
         XElement[] elementsToDelete)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (elementsToDelete.Contains(element))
             {
@@ -2817,15 +2782,14 @@ public class RevisionProcessor
     private static object CoalesqueParagraphEndTagsInMoveFromTransform(XNode node,
         IGrouping<MoveFromCollectionType, XElement> g)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.p)
             {
                 return new XElement(W.p,
                     element.Attributes(),
                     element.Elements(),
-                    g.Skip(1).Select(p => CollapseParagraphTransform(p)));
+                    g.Skip(1).Select(CollapseParagraphTransform));
             }
             else
             {
@@ -2849,8 +2813,7 @@ public class RevisionProcessor
     // else.
     private static object AcceptDeletedCellsTransform(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.tr)
             {
@@ -2858,7 +2821,7 @@ public class RevisionProcessor
                     .Elements()
                     .GroupAdjacent(e =>
                     {
-                        XElement cellAfter = e.ElementsAfterSelf(W.tc).FirstOrDefault();
+                        XElement? cellAfter = e.ElementsAfterSelf(W.tc).FirstOrDefault();
                         bool cellAfterIsDeleted = cellAfter != null &&
                             cellAfter.Descendants(W.cellDel).Any();
                         if (e.Name == W.tc &&
@@ -2869,16 +2832,15 @@ public class RevisionProcessor
                                 CollectionType = DeletedCellCollectionType.DeletedCell,
                                 Disambiguator = new[] { e }
                                     .Concat(e.SiblingsBeforeSelfReverseDocumentOrder())
-                                    .Where(z => z.Name == W.tc &&
+                                    .FirstOrDefault(z => z.Name == W.tc &&
                                         !z.Descendants(W.cellDel).Any())
-                                    .FirstOrDefault()
                             };
                             return a;
                         }
                         var a2 = new
                         {
                             CollectionType = DeletedCellCollectionType.Other,
-                            Disambiguator = e
+                            Disambiguator = (XElement?)e
                         };
                         return a2;
                     });
@@ -2886,43 +2848,42 @@ public class RevisionProcessor
                     element.Attributes(),
                     groupedCells.Select(g =>
                     {
-                        if (g.Key.CollectionType == DeletedCellCollectionType.DeletedCell
+                        if (g.Key?.CollectionType == DeletedCellCollectionType.DeletedCell
                             && g.First().Descendants(W.cellDel).Any())
                         {
                             return null;
                         }
 
-                        if (g.Key.CollectionType == DeletedCellCollectionType.Other)
+                        if (g.Key?.CollectionType == DeletedCellCollectionType.Other)
                         {
-                            return (object)g;
+                            return g;
                         }
 
-                        XElement gridSpanElement = g
+                        XElement? gridSpanElement = g
                             .First()
                             .Elements(W.tcPr)
                             .Elements(W.gridSpan)
                             .FirstOrDefault();
-                        int gridSpan = gridSpanElement != null ?
-                            (int)gridSpanElement.Attribute(W.val) :
-                            1;
+                        XAttribute? gridSpanValAttribute = gridSpanElement?.Attribute(W.val);
+                        int gridSpan = gridSpanValAttribute != null ? (int)gridSpanValAttribute : 1;
                         int newGridSpan = gridSpan + g.Count() - 1;
-                        XElement currentTcPr = g.First().Elements(W.tcPr).FirstOrDefault();
-                        XElement newTcPr = new XElement(W.tcPr,
-                            currentTcPr != null ? currentTcPr.Attributes() : null,
+                        XElement? currentTcPr = g.First().Elements(W.tcPr).FirstOrDefault();
+                        var newTcPr = new XElement(W.tcPr,
+                            currentTcPr?.Attributes(),
                             new XElement(W.gridSpan,
                                 new XAttribute(W.val, newGridSpan)),
-                            currentTcPr.Elements().Where(e => e.Name != W.gridSpan));
+                            currentTcPr?.Elements().Where(e => e.Name != W.gridSpan));
                         var orderedTcPr = new XElement(W.tcPr,
                             newTcPr.Elements().OrderBy(e =>
                             {
-                                if (Order_tcPr.ContainsKey(e.Name))
+                                if (Order_tcPr.TryGetValue(e.Name, out var value1))
                                 {
-                                    return Order_tcPr[e.Name];
+                                    return value1;
                                 }
 
                                 return 999;
                             }));
-                        XElement newTc = new XElement(W.tc,
+                        var newTc = new XElement(W.tc,
                             orderedTcPr,
                             g.First().Elements().Where(e => e.Name != W.tcPr));
                         return (object)newTc;
@@ -2933,7 +2894,7 @@ public class RevisionProcessor
             // Identity clone
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => AcceptDeletedCellsTransform(n)));
+                element.Nodes().Select(AcceptDeletedCellsTransform));
         }
         return node;
     }
@@ -2948,7 +2909,7 @@ public class RevisionProcessor
     </w:tc>
   </w:tr>
 #endif
-    private static XName[] BlockLevelElements = new[] {
+    private static readonly XName[] BlockLevelElements = [
         W.p,
         W.tbl,
         W.sdt,
@@ -2957,12 +2918,11 @@ public class RevisionProcessor
         M.oMath,
         M.oMathPara,
         W.moveTo,
-    };
+    ];
 
-    private static object RemoveRowsLeftEmptyByMoveFrom(XNode node)
+    private static object? RemoveRowsLeftEmptyByMoveFrom(XNode node)
     {
-        XElement element = node as XElement;
-        if (element != null)
+        if (node is XElement element)
         {
             if (element.Name == W.tr)
             {
@@ -2971,20 +2931,20 @@ public class RevisionProcessor
                 {
                     return new XElement(element.Name,
                         element.Attributes(),
-                        element.Nodes().Select(n => RemoveRowsLeftEmptyByMoveFrom(n)));
+                        element.Nodes().Select(RemoveRowsLeftEmptyByMoveFrom));
                 }
                 return null;
             }
 
             return new XElement(element.Name,
                 element.Attributes(),
-                element.Nodes().Select(n => RemoveRowsLeftEmptyByMoveFrom(n)));
+                element.Nodes().Select(RemoveRowsLeftEmptyByMoveFrom));
         }
         return node;
     }
 
-    public static XName[] TrackedRevisionsElements = new[]
-    {
+    public static readonly XName[] TrackedRevisionsElements =
+    [
         W.cellDel,
         W.cellIns,
         W.cellMerge,
@@ -3011,7 +2971,7 @@ public class RevisionProcessor
         W.tblPrExChange,
         W.tcPrChange,
         W.trPrChange,
-    };
+    ];
 
     public static bool PartHasTrackedRevisions(OpenXmlPart part)
     {
@@ -3022,7 +2982,8 @@ public class RevisionProcessor
 
     public static bool HasTrackedRevisions(WordprocessingDocument doc)
     {
-        if (PartHasTrackedRevisions(doc.MainDocumentPart))
+        ArgumentNullException.ThrowIfNull(doc);
+        if (PartHasTrackedRevisions(doc.MainDocumentPart ?? throw new InvalidOperationException("MainDocumentPart is null")))
         {
             return true;
         }
@@ -3063,14 +3024,24 @@ public class RevisionProcessor
     }
 }
 
-public class BlockContentInfo
+internal sealed class BlockContentInfo
 {
-    public XElement PreviousBlockContentElement;
-    public XElement ThisBlockContentElement;
-    public XElement NextBlockContentElement;
+    // This may be null, indicating that there is no descendant paragraph.  For
+    // example, comment elements have no descendant elements.
+    private XElement? _thisBlockContentElement;
+
+    public bool HasBlockContentElement => _thisBlockContentElement != null;
+    public XElement? PreviousBlockContentElement { get; set; }
+    [AllowNull]
+    public required XElement ThisBlockContentElement
+    {
+        get => _thisBlockContentElement ?? throw new InvalidOperationException("ThisBlockContentElement is null");
+        set => _thisBlockContentElement = value;
+    }
+    public XElement? NextBlockContentElement { get; set; }
 }
 
-public static class RevisionAccepterExtensions
+internal static class RevisionAccepterExtensions
 {
     private static void InitializeParagraphInfo(XElement contentContext)
     {
@@ -3080,22 +3051,21 @@ public static class RevisionAccepterExtensions
                 "GetParagraphInfo called for element that is not child of content container");
         }
 
-        XElement prev = null;
+        XElement? prev = null;
         foreach (var content in contentContext.Elements())
         {
             // This may return null, indicating that there is no descendant paragraph.  For
             // example, comment elements have no descendant elements.
-            XElement paragraph = content
+            XElement? paragraph = content
                 .DescendantsAndSelf()
-                .Where(e => e.Name == W.p || e.Name == W.tc || e.Name == W.txbxContent)
-                .FirstOrDefault();
+                .FirstOrDefault(e => e.Name == W.p || e.Name == W.tc || e.Name == W.txbxContent);
             if (paragraph != null &&
                 (paragraph.Name == W.tc || paragraph.Name == W.txbxContent))
             {
                 paragraph = null;
             }
 
-            BlockContentInfo pi = new BlockContentInfo()
+            var pi = new BlockContentInfo()
             {
                 PreviousBlockContentElement = prev,
                 ThisBlockContentElement = paragraph
@@ -3107,14 +3077,14 @@ public static class RevisionAccepterExtensions
 
     public static BlockContentInfo GetParagraphInfo(this XElement contentElement)
     {
-        BlockContentInfo paragraphInfo = contentElement.Annotation<BlockContentInfo>();
+        BlockContentInfo? paragraphInfo = contentElement.Annotation<BlockContentInfo>();
         if (paragraphInfo != null)
         {
             return paragraphInfo;
         }
 
-        InitializeParagraphInfo(contentElement.Parent);
-        return contentElement.Annotation<BlockContentInfo>();
+        InitializeParagraphInfo(contentElement.Parent ?? throw new InvalidOperationException("Content element has no parent."));
+        return contentElement.Annotation<BlockContentInfo>() ?? throw new InvalidOperationException("Failed to initialize paragraph info.");
     }
 
     public static IEnumerable<XElement> ContentElementsBeforeSelf(this XElement element)
@@ -3122,8 +3092,8 @@ public static class RevisionAccepterExtensions
         XElement current = element;
         while (true)
         {
-            BlockContentInfo pi = current.GetParagraphInfo();
-            if (pi.PreviousBlockContentElement == null)
+            BlockContentInfo? pi = current.GetParagraphInfo();
+            if (pi?.PreviousBlockContentElement == null)
             {
                 yield break;
             }

@@ -37,16 +37,21 @@ namespace OxPt
             // TODO: Do we need to keep the revision count parameter?
             Assert.Equal(1, revisionCount);
 
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../TestFiles/");
-            FileInfo source1Docx = new FileInfo(Path.Combine(sourceDir.FullName, name1));
-            FileInfo source2Docx = new FileInfo(Path.Combine(sourceDir.FullName, name2));
+            var sourceDir = new DirectoryInfo("../../../../TestFiles/");
+            var source1Docx = new FileInfo(Path.Combine(sourceDir.FullName, name1));
+            var source2Docx = new FileInfo(Path.Combine(sourceDir.FullName, name2));
 
             var rootTempDir = TestUtil.TempDir;
             var thisTestTempDir = new DirectoryInfo(Path.Combine(rootTempDir.FullName, testId));
             if (thisTestTempDir.Exists)
-                Assert.True(false, "Duplicate test id???");
+            {
+                Assert.Fail("Duplicate test id???");
+            }
             else
+            {
                 thisTestTempDir.Create();
+            }
+
             var source1CopiedToDestDocx = new FileInfo(Path.Combine(thisTestTempDir.FullName, source1Docx.Name));
             var source2CopiedToDestDocx = new FileInfo(Path.Combine(thisTestTempDir.FullName, source2Docx.Name));
             File.Copy(source1Docx.FullName, source1CopiedToDestDocx.FullName);
@@ -56,17 +61,22 @@ namespace OxPt
 
             if (m_OpenWord)
             {
-                FileInfo source1DocxForWord = new FileInfo(Path.Combine(sourceDir.FullName, name1));
-                FileInfo source2DocxForWord = new FileInfo(Path.Combine(sourceDir.FullName, name2));
+                var source1DocxForWord = new FileInfo(Path.Combine(sourceDir.FullName, name1));
+                var source2DocxForWord = new FileInfo(Path.Combine(sourceDir.FullName, name2));
 
                 var source1CopiedToDestDocxForWord = new FileInfo(Path.Combine(thisTestTempDir.FullName, source1Docx.Name.Replace(".docx", "-For-Word.docx")));
                 var source2CopiedToDestDocxForWord = new FileInfo(Path.Combine(thisTestTempDir.FullName, source2Docx.Name.Replace(".docx", "-For-Word.docx")));
                 if (!source1CopiedToDestDocxForWord.Exists)
+                {
                     File.Copy(source1Docx.FullName, source1CopiedToDestDocxForWord.FullName);
-                if (!source2CopiedToDestDocxForWord.Exists)
-                    File.Copy(source2Docx.FullName, source2CopiedToDestDocxForWord.FullName);
+                }
 
-                FileInfo wordExe = new FileInfo(@"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE");
+                if (!source2CopiedToDestDocxForWord.Exists)
+                {
+                    File.Copy(source2Docx.FullName, source2CopiedToDestDocxForWord.FullName);
+                }
+
+                var wordExe = new FileInfo(@"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE");
                 WordRunner.RunWord(wordExe, source2CopiedToDestDocxForWord);
                 WordRunner.RunWord(wordExe, source1CopiedToDestDocxForWord);
             }
@@ -77,20 +87,22 @@ namespace OxPt
             var after = source2CopiedToDestDocx.Name.Replace(".docx", "");
             var docxWithRevisionsFi = new FileInfo(Path.Combine(thisTestTempDir.FullName, before + "-COMPARE-" + after + ".docx"));
 
-            WmlDocument source1Wml = new WmlDocument(source1CopiedToDestDocx.FullName);
-            WmlDocument source2Wml = new WmlDocument(source2CopiedToDestDocx.FullName);
-            WmlComparerSettings settings = new WmlComparerSettings();
-            settings.DebugTempFileDi = thisTestTempDir;
+            var source1Wml = new WmlDocument(source1CopiedToDestDocx.FullName);
+            var source2Wml = new WmlDocument(source2CopiedToDestDocx.FullName);
+            var settings = new WmlComparerSettings
+            {
+                DebugTempFileDi = thisTestTempDir
+            };
             WmlDocument comparedWml = WmlComparer.Compare(source1Wml, source2Wml, settings);
 
             ///////////////////////////
             comparedWml.SaveAs(docxWithRevisionsFi.FullName);
-            using (MemoryStream ms = new MemoryStream())
+            using (var ms = new MemoryStream())
             {
                 ms.Write(comparedWml.DocumentByteArray, 0, comparedWml.DocumentByteArray.Length);
-                using (WordprocessingDocument wDoc = WordprocessingDocument.Open(ms, true))
+                using (var wDoc = WordprocessingDocument.Open(ms, true))
                 {
-                    OpenXmlValidator validator = new OpenXmlValidator();
+                    var validator = new OpenXmlValidator();
                     var errors = validator.Validate(wDoc).Where(e => !ExpectedErrors.Contains(e.Description));
                     if (errors.Count() > 0)
                     {
@@ -107,7 +119,9 @@ namespace OxPt
                         }
                         var sbs = sb.ToString();
                         if (sbs != "")
-                            Assert.True(false, sbs.ToString());
+                        {
+                            Assert.Fail(sbs.ToString());
+                        }
                     }
                 }
             }
@@ -116,7 +130,7 @@ namespace OxPt
 
             if (m_OpenWord)
             {
-                FileInfo wordExe = new FileInfo(@"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE");
+                var wordExe = new FileInfo(@"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE");
                 WordRunner.RunWord(wordExe, docxWithRevisionsFi);
             }
 
@@ -905,12 +919,12 @@ namespace OxPt
 
         private static void ValidateDocument(WmlDocument wmlToValidate)
         {
-            using (MemoryStream ms = new MemoryStream())
+            using (var ms = new MemoryStream())
             {
                 ms.Write(wmlToValidate.DocumentByteArray, 0, wmlToValidate.DocumentByteArray.Length);
-                using (WordprocessingDocument wDoc = WordprocessingDocument.Open(ms, true))
+                using (var wDoc = WordprocessingDocument.Open(ms, true))
                 {
-                    OpenXmlValidator validator = new OpenXmlValidator();
+                    var validator = new OpenXmlValidator();
                     var errors = validator.Validate(wDoc).Where(e => !ExpectedErrors.Contains(e.Description));
                     if (errors.Count() != 0)
                     {
@@ -931,7 +945,7 @@ namespace OxPt
             }
         }
 
-        public static string[] ExpectedErrors = new string[] {
+        public static string[] ExpectedErrors = [
             "The 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:firstRow' attribute is not declared.",
             "The 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:lastRow' attribute is not declared.",
             "The 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:firstColumn' attribute is not declared.",
@@ -955,7 +969,7 @@ namespace OxPt
             "The 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:alternateStyleNames' attribute is not declared.",
             "The attribute 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:val' has invalid value '0'. The MinInclusive constraint failed. The value must be greater than or equal to 1.",
             "The attribute 'http://schemas.openxmlformats.org/wordprocessingml/2006/main:val' has invalid value '0'. The MinInclusive constraint failed. The value must be greater than or equal to 2.",
-        };
+        ];
 
     }
 #if false
