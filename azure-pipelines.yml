@@ -16,20 +16,22 @@ steps:
   inputs:
     command: restore
     projects: |
-      **/*.csproj
+      OpenXmlRevisions/OpenXmlRevisions.csproj
+      OpenXmlRevisions.Tests/OpenXmlRevisions.Tests.csproj
     arguments: '--configuration $(BuildConfiguration)'
 - task: DotNetCoreCLI@2
   displayName: Build the libraries
   inputs:
     projects: |
-      **/*.csproj
+      OpenXmlRevisions/OpenXmlRevisions.csproj
+      OpenXmlRevisions.Tests/OpenXmlRevisions.Tests.csproj
     arguments: '--configuration $(BuildConfiguration)'
 - task: DotNetCoreCLI@2
   displayName: Test
   inputs:
     command: test
     projects: |
-      **/*.Tests.csproj
+      OpenXmlRevisions.Tests/OpenXmlRevisions.Tests.csproj
     arguments: '--configuration $(BuildConfiguration)'
 - task: DotNetCoreCLI@2
   displayName: Push NuGet packages

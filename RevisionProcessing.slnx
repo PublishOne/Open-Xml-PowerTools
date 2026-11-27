@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="azure-pipelines.yml" />
+    <File Path="NuGet.config" />
+  </Folder>
   <Project Path="OpenXmlRevisions.Tests/OpenXmlRevisions.Tests.csproj" />
   <Project Path="OpenXmlRevisions/OpenXmlRevisions.csproj" />
 </Solution>
