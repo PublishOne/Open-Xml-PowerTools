@@ -36,6 +36,8 @@ steps:
 - task: DotNetCoreCLI@2
   displayName: Push NuGet packages
   inputs:
-    command: 'custom'
-    custom: 'nuget'
-    arguments: 'push -k AzureArtifacts --source $(packagefeed) --skip-duplicate **/Release/*.nupkg'
+    command: push
+    packagesToPush: '$(Build.SourcesDirectory)/**/Release/*.nupkg'
+    nuGetFeedType: internal
+    publishVstsFeed: '$(packagefeed)'
+    allowPackageConflicts: true
